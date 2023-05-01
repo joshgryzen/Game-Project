@@ -117,7 +117,6 @@ class MainController extends Component {
             if (!enemyGameObject) {
                 if (enemySwordGameObject) enemySwordGameObject.destroy()
                 GameObject.instantiate(new EnemyGameObject())
-                GameObject.instantiate(new EnemySwordGameObject())
             }
         }
     }
@@ -126,6 +125,8 @@ class MainController extends Component {
 class PlayerComponent extends Component {
     name = 'PlayerComponent'
     start() {
+        // Instantiate the sword
+        GameObject.instantiate(new SwordGameObject())
         // Player obj
         this.player = {
             x_v: 0,
@@ -413,9 +414,19 @@ class SwordComponent extends Component {
     }
 }
 
+class SwordGameObject extends GameObject {
+    name = 'SwordGameObject'
+    start() {
+        this.addComponent(new SwordComponent())
+    }
+}
+
 class EnemyComponent extends Component {
     name = 'EnemyComponent'
     start() {
+        // Instantiate a sword
+        GameObject.instantiate(new EnemySwordGameObject())
+
         // Player obj
         this.player = {
             x_v: 0,
@@ -547,6 +558,7 @@ class EnemySwordComponent extends Component {
             lerpy: 0,
             y_v: 0,
             x_v: 0,
+            stuck: false,
         }
         this.swingTime = 0
         this.maxTime = 1
@@ -661,48 +673,92 @@ class EnemySwordComponent extends Component {
         }
         // If the player dies let the sword fall to the floor
         else {
-            let platformGameObject =
-                GameObject.getObjectByName('PlatformGameObject')
-            let platformComponent =
-                platformGameObject.getComponent('PlatformComponent')
+            if (!this.sword.stuck) {
+                let platformGameObject =
+                    GameObject.getObjectByName('PlatformGameObject')
+                let platformComponent =
+                    platformGameObject.getComponent('PlatformComponent')
 
-            let floorGameObject = GameObject.getObjectByName('FloorGameObject')
-            let floorComponent = floorGameObject.getComponent('FloorComponent')
+                let floorGameObject =
+                    GameObject.getObjectByName('FloorGameObject')
+                let floorComponent =
+                    floorGameObject.getComponent('FloorComponent')
 
-            // If the sword is in the air then apply the effect of gravity
-            this.sword.y_v += this.gravity
+                // If the sword is in the air then apply the effect of gravity
+                if (this.sword.y_v < 12) this.sword.y_v += this.gravity
 
-            // Updating the y and x coordinates of the player
-            this.transform.y += this.sword.y_v
+                // Updating the y and x coordinates of the player
+                this.transform.y += this.sword.y_v
 
-            // Check for collisions with the platform
-            for (let i = 0; i < platformComponent.platforms.length; i++) {
-                let plat = platformComponent.platforms[i]
+                // Check for collions with the platform
+                for (let i = 0; i < platformComponent.platforms.length; i++) {
+                    let plat = platformComponent.platforms[i]
+                    if (
+                        plat.x < this.transform.x + this.sword.width &&
+                        this.transform.x < plat.x + plat.width &&
+                        plat.y < this.transform.y &&
+                        this.transform.y < plat.y + plat.height
+                    ) {
+                        this.transform.y = plat.y
+                        this.sword.stuck = true
+                    }
+                }
+
+                // Check for collisions with the floor
+                let plat = floorComponent.floor
                 if (
-                    plat.x <= this.transform.x + this.sword.width &&
-                    this.transform.x <= plat.x + plat.width &&
                     plat.y <= this.transform.y + this.sword.height &&
-                    this.transform.y + this.sword.height <= plat.y + plat.height
+                    this.transform.y + this.sword.height <=
+                        plat.y + plat.height &&
+                    this.transform.x + this.sword.width >= plat.x &&
+                    this.transform.x <= plat.x + plat.width
                 ) {
-                    this.transform.y = plat.y + this.sword.height
+                    this.transform.y = plat.y
+                    this.sword.stuck = true
+                }
+                if (this.transform.y >= plat.y + 400) {
+                    this.parent.destroy()
+                }
+
+                this.sword.lerpx = SwordComponent.lerp(
+                    this.sword.lerpx,
+                    this.transform.x,
+                    300 / 1000
+                )
+                this.sword.lerpy = this.transform.y - this.sword.height
+            } else {
+                // check if the sword is not laying flat
+                if (this.swingTime < this.maxTime) {
+                    // tilted to the left
+                    if (this.transform.x > this.sword.lerpx) {
+                        this.swingTime += 60 / 1000
+                        this.sword.lerpx = SwordComponent.lerp(
+                            this.sword.lerpx,
+                            this.transform.x - this.sword.height,
+                            this.swingTime / this.maxTime
+                        )
+                        this.sword.lerpy = SwordComponent.lerp(
+                            this.sword.lerpy,
+                            this.transform.y,
+                            this.swingTime / this.maxTime
+                        )
+                    }
+                    // tilted to the right
+                    else if (this.transform.x < this.sword.lerpx) {
+                        this.swingTime += 60 / 1000
+                        this.sword.lerpx = SwordComponent.lerp(
+                            this.sword.lerpx,
+                            this.transform.x + this.sword.height,
+                            this.swingTime / this.maxTime
+                        )
+                        this.sword.lerpy = SwordComponent.lerp(
+                            this.sword.lerpy,
+                            this.transform.y,
+                            this.swingTime / this.maxTime
+                        )
+                    }
                 }
             }
-
-            // Check for collisions with the floor
-            let plat = floorComponent.floor
-            if (
-                plat.y <= this.transform.y + this.sword.height &&
-                this.transform.y + this.sword.height <= plat.y + plat.height
-            ) {
-                this.transform.y = plat.y + this.sword.height
-            }
-
-            this.sword.lerpx = SwordComponent.lerp(
-                this.sword.lerpx,
-                this.transform.x,
-                300 / 1000
-            )
-            this.sword.lerpy = this.transform.y - this.sword.height
         }
     }
     draw(ctx) {
@@ -982,14 +1038,6 @@ class MainScene extends Scene {
         super('teal')
     }
     start() {
-        // this.addGameObject(
-        //     new GameObject('PlayerGameObjectTest')
-        //         .addComponent(new PlayerComponentTest())
-        //         .addComponent(new Rectangle('blue')),
-        //     new Vector2(0, 0),
-        //     new Vector2(10, 10)
-        // )
-        // this.addGameObject(GameObject.getObjectByName('CheckpointGameObject'))
         this.addGameObject(
             new GameObject('BenchGameObject').addComponent(new BenchComponent())
         )
@@ -999,16 +1047,9 @@ class MainScene extends Scene {
             )
         )
         this.addGameObject(
-            new GameObject('SwordGameObject').addComponent(new SwordComponent())
-        )
-        this.addGameObject(
             new GameObject('EnemyGameObject').addComponent(new EnemyComponent())
         )
-        this.addGameObject(
-            new GameObject('EnemySwordGameObject').addComponent(
-                new EnemySwordComponent()
-            )
-        )
+
         this.addGameObject(
             new GameObject('PlatformGameObject').addComponent(
                 new PlatformComponent()
@@ -1022,7 +1063,6 @@ class MainScene extends Scene {
                 new MainController()
             )
         )
-
         Camera.main.parent.addComponent(new MainCameraComponent())
     }
 }
