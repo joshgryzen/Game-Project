@@ -103,8 +103,11 @@ class MainCameraComponent extends Component {
 }
 
 class MainController extends Component {
-    enemy_count = 2
-    start() {}
+    name = 'MainController'
+    enemy_count = 3
+    start() {
+        // this.enemy_count = 3
+    }
     update() {
         let playerGameObject = GameObject.getObjectByName('PlayerGameObject')
         let playerComponent = playerGameObject.getComponent('PlayerComponent')
@@ -115,17 +118,29 @@ class MainController extends Component {
             let enemyGamesObjects =
                 GameObject.getObjectsByName('EnemyGameObject')
             if (enemyGamesObjects.length != this.enemy_count) {
-                for (let enemySwordGameObject of enemySwordGameObjects) {
-                    enemySwordGameObject.destroy()
+                let total_ids = []
+                let ids = []
+                for (let i = 1; i <= this.enemy_count; i++) {
+                    total_ids.push(i)
                 }
                 for (let enemyGameObject of enemyGamesObjects) {
-                    enemyGameObject.destroy()
+                    let enemyComponent =
+                        enemyGameObject.getComponent('EnemyComponent')
+                    ids.push(enemyComponent.id)
                 }
-            }
-
-            if (enemyGamesObjects.length == 0) {
-                GameObject.instantiate(new EnemyGameObject(false, 200, 200, 1))
-                GameObject.instantiate(new EnemyGameObject(true, -40, 60, 2))
+                for (let id of total_ids) {
+                    if (!ids.includes(id)) {
+                        for (let enemySwordGameObject of enemySwordGameObjects) {
+                            let enemySwordComponent =
+                                enemySwordGameObject.getComponent(
+                                    'EnemySwordComponent'
+                                )
+                            if (enemySwordComponent.id == id)
+                                enemySwordGameObject.destroy()
+                        }
+                        GameObject.instantiate(new EnemyGameObject(id))
+                    }
+                }
             }
         }
     }
@@ -450,7 +465,7 @@ class EnemyComponent extends Component {
 
         // Player obj
         this.player = {
-            x_v: 0,
+            x_v: 1,
             y_v: 0,
             canJump: false,
             height: 20,
@@ -494,6 +509,21 @@ class EnemyComponent extends Component {
             ) {
                 this.player.canJump = true
                 this.transform.y = plat.y - this.player.height
+                if (this.walking) {
+                    if (this.player.direction == 0) {
+                        if (
+                            this.transform.x + this.player.width <=
+                            plat.x + plat.width - this.player.width
+                        ) {
+                            this.transform.x += this.player.x_v
+                        } else this.player.direction = 1
+                    }
+                    if (this.player.direction == 1) {
+                        if (this.transform.x >= plat.x + this.player.width) {
+                            this.transform.x -= this.player.x_v
+                        } else this.player.direction = 0
+                    }
+                }
             }
         }
 
@@ -505,54 +535,73 @@ class EnemyComponent extends Component {
         ) {
             this.player.canJump = true
             this.transform.y = plat.y - this.player.height
+            if (this.walking) {
+                if (this.player.direction == 0) {
+                    if (
+                        this.transform.x + this.player.width <=
+                        plat.x + plat.width - this.player.width
+                    ) {
+                        this.transform.x += this.player.x_v
+                    } else this.player.direction = 1
+                }
+                if (this.player.direction == 1) {
+                    if (this.transform.x >= plat.x + this.player.width) {
+                        this.transform.x -= this.player.x_v
+                    } else this.player.direction = 0
+                }
+            }
         }
 
         // Get information from player component
         let playerGameObject = GameObject.getObjectByName('PlayerGameObject')
         let playerComponent = playerGameObject.getComponent('PlayerComponent')
 
-        // Check direction to face
-        let dist_x = this.transform.x - playerComponent.transform.x
-        dist_x <= 0 ? (this.player.direction = 0) : (this.player.direction = 1)
+        if (!playerComponent.player.sitting) {
+            // Check direction to face
+            let dist_x = this.transform.x - playerComponent.transform.x
 
-        let dist_y = this.transform.y - playerComponent.transform.y
+            let dist_y = this.transform.y - playerComponent.transform.y
+            if (Math.abs(dist_y) <= 50 && Math.abs(dist_x) <= 200) {
+                this.player.nearPlayer = true
+                dist_x <= 0
+                    ? (this.player.direction = 0)
+                    : (this.player.direction = 1)
+            } else this.player.nearPlayer = false
 
-        if (Math.abs(dist_y) <= 50 && Math.abs(dist_x) <= 50) {
-            this.player.nearPlayer = true
-        } else this.player.nearPlayer = false
+            // Check for collisions with the player sword
+            let swordGameObject = GameObject.getObjectByName('SwordGameObject')
+            let swordComponent = swordGameObject.getComponent('SwordComponent')
 
-        // Check for collisions with the player sword
-        let swordGameObject = GameObject.getObjectByName('SwordGameObject')
-        let swordComponent = swordGameObject.getComponent('SwordComponent')
+            // Get coordinates of sword
+            let x_start = swordComponent.transform.x
+            let y_start = swordComponent.transform.y
+            let x_end = swordComponent.sword.lerpx
+            let y_end = swordComponent.sword.lerpy
 
-        // Get coordinates of sword
-        let x_start = swordComponent.transform.x
-        let y_start = swordComponent.transform.y
-        let x_end = swordComponent.sword.lerpx
-        let y_end = swordComponent.sword.lerpy
-
-        // First check if the sword is swinging
-        if (swordComponent.sword.isSwinging) {
-            // Check if the enemy is within the x-range of the sword
-            if (
-                (x_start >= this.transform.x &&
-                    x_end <= this.transform.x + this.player.width) ||
-                (x_start <= this.transform.x && x_end >= this.transform.x)
-            ) {
-                // Check if the enemy is within the y-range of the sword
+            // First check if the sword is swinging
+            if (swordComponent.sword.isSwinging) {
+                // Check if the enemy is within the x-range of the sword
                 if (
-                    (y_start >= this.transform.y &&
-                        y_end <= this.transform.y + this.player.height) ||
-                    (y_start <= this.transform.y &&
-                        y_end >= this.transform.y + this.player.height)
+                    (x_start >= this.transform.x &&
+                        x_end <= this.transform.x + this.player.width) ||
+                    (x_start <= this.transform.x && x_end >= this.transform.x)
                 ) {
-                    this.parent.destroy()
+                    // Check if the enemy is within the y-range of the sword
+                    if (
+                        (y_start >= this.transform.y &&
+                            y_end <= this.transform.y + this.player.height) ||
+                        (y_start <= this.transform.y &&
+                            y_end >= this.transform.y + this.player.height)
+                    ) {
+                        this.parent.destroy()
+                    }
                 }
             }
-        }
+        } else this.player.nearPlayer = false
     }
     draw(ctx) {
-        ctx.fillStyle = '#9e34eb'
+        if (!this.walking) ctx.fillStyle = '#9e34eb'
+        else if (this.walking) ctx.fillStyle = '#d6d64b'
         ctx.fillRect(
             this.transform.x,
             this.transform.y,
@@ -564,14 +613,30 @@ class EnemyComponent extends Component {
 
 class EnemyGameObject extends GameObject {
     name = 'EnemyGameObject'
-    constructor(walking, x_start, y_start, id) {
+    constructor(id) {
         super()
-        this.walking = walking
-        this.x_start = x_start
-        this.y_start = y_start
         this.id = id
+        if (this.id == 1) {
+            this.walking = false
+            this.x_start = 195
+            this.y_start = 200
+        } else if (this.id == 2) {
+            this.walking = true
+            this.x_start = -40
+            this.y_start = 60
+        } else if (this.id == 3) {
+            this.walking = true
+            this.x_start = 900
+            this.y_start = 0
+        }
     }
     start() {
+        // let mainControllerObject = GameObject.getObjectByName(
+        //     'MainControllerObject'
+        // )
+        // let mainControllerComponent =
+        //     mainControllerObject.getComponent('MainController')
+        // mainControllerComponent.enemy_count += 1
         this.addComponent(
             new EnemyComponent(
                 this.walking,
@@ -609,7 +674,7 @@ class EnemySwordComponent extends Component {
         this.found = false
     }
     update() {
-        // If the player is alive
+        // If the enemy is alive
         this.found = false
         let enemies = GameObject.getObjectsByName('EnemyGameObject')
         for (let enemy of enemies) {
@@ -720,7 +785,7 @@ class EnemySwordComponent extends Component {
             }
             this.found = false
         }
-        // If the player dies let the sword fall to the floor
+        // If the enemy dies let the sword fall to the floor
         if (!this.found) {
             this.sword.isSwinging = false
             if (!this.sword.stuck) {
@@ -756,11 +821,10 @@ class EnemySwordComponent extends Component {
                 // Check for collisions with the floor
                 let plat = floorComponent.floor
                 if (
-                    plat.y <= this.transform.y + this.sword.height &&
-                    this.transform.y + this.sword.height <=
-                        plat.y + plat.height &&
-                    this.transform.x + this.sword.width >= plat.x &&
-                    this.transform.x <= plat.x + plat.width
+                    plat.x < this.transform.x + this.sword.width &&
+                    this.transform.x < plat.x + plat.width &&
+                    plat.y < this.transform.y &&
+                    this.transform.y < plat.y + plat.height
                 ) {
                     this.transform.y = plat.y
                     this.sword.stuck = true
@@ -1099,8 +1163,9 @@ class MainScene extends Scene {
                 new PlayerComponent()
             )
         )
-        this.addGameObject(new EnemyGameObject(false, 200, 200, 1))
-        this.addGameObject(new EnemyGameObject(true, -40, 60, 2))
+        this.addGameObject(new EnemyGameObject(1))
+        this.addGameObject(new EnemyGameObject(2))
+        this.addGameObject(new EnemyGameObject(3))
         this.addGameObject(
             new GameObject('PlatformGameObject').addComponent(
                 new PlatformComponent()
