@@ -103,20 +103,29 @@ class MainCameraComponent extends Component {
 }
 
 class MainController extends Component {
+    enemy_count = 2
     start() {}
     update() {
         let playerGameObject = GameObject.getObjectByName('PlayerGameObject')
         let playerComponent = playerGameObject.getComponent('PlayerComponent')
-        console.log(playerComponent.player.sitting)
         if (playerComponent.player.sitting) {
-            let enemyGameObject = GameObject.getObjectByName('EnemyGameObject')
-            let enemySwordGameObject = GameObject.getObjectByName(
+            let enemySwordGameObjects = GameObject.getObjectsByName(
                 'EnemySwordGameObject'
             )
+            let enemyGamesObjects =
+                GameObject.getObjectsByName('EnemyGameObject')
+            if (enemyGamesObjects.length != this.enemy_count) {
+                for (let enemySwordGameObject of enemySwordGameObjects) {
+                    enemySwordGameObject.destroy()
+                }
+                for (let enemyGameObject of enemyGamesObjects) {
+                    enemyGameObject.destroy()
+                }
+            }
 
-            if (!enemyGameObject) {
-                if (enemySwordGameObject) enemySwordGameObject.destroy()
-                GameObject.instantiate(new EnemyGameObject())
+            if (enemyGamesObjects.length == 0) {
+                GameObject.instantiate(new EnemyGameObject(false, 200, 200, 1))
+                GameObject.instantiate(new EnemyGameObject(true, -40, 60, 2))
             }
         }
     }
@@ -249,37 +258,41 @@ class PlayerComponent extends Component {
                 SceneManager.changeScene(2)
             }
 
-            // Check for collisions with the player sword
-            let swordGameObject = GameObject.getObjectByName(
+            // Check for collisions with the enemy sword
+            let swordGameObjects = GameObject.getObjectsByName(
                 'EnemySwordGameObject'
             )
-            let swordComponent = swordGameObject.getComponent(
-                'EnemySwordComponent'
-            )
+            for (let swordGameObject of swordGameObjects) {
+                let swordComponent = swordGameObject.getComponent(
+                    'EnemySwordComponent'
+                )
 
-            // Get coordinates of sword
-            let x_start = swordComponent.transform.x
-            let y_start = swordComponent.transform.y
-            let x_end = swordComponent.sword.lerpx
-            let y_end = swordComponent.sword.lerpy
+                // Get coordinates of sword
+                let x_start = swordComponent.transform.x
+                let y_start = swordComponent.transform.y
+                let x_end = swordComponent.sword.lerpx
+                let y_end = swordComponent.sword.lerpy
 
-            // First check if the sword is swinging
-            if (swordComponent.sword.isSwinging) {
-                // Check if the enemy is within the x-range of the sword
-                if (
-                    (x_start >= this.transform.x &&
-                        x_end <= this.transform.x + this.player.width) ||
-                    (x_start <= this.transform.x && x_end >= this.transform.x)
-                ) {
-                    // Check if the enemy is within the y-range of the sword
+                // First check if the sword is swinging
+                if (swordComponent.sword.isSwinging) {
+                    // Check if the enemy is within the x-range of the sword
                     if (
-                        (y_start >= this.transform.y &&
-                            y_end <= this.transform.y + this.player.height) ||
-                        (y_start <= this.transform.y &&
-                            y_end >= this.transform.y + this.player.height)
+                        (x_start >= this.transform.x &&
+                            x_end <= this.transform.x + this.player.width) ||
+                        (x_start <= this.transform.x &&
+                            x_end >= this.transform.x)
                     ) {
-                        this.parent.destroy()
-                        SceneManager.changeScene(2)
+                        // Check if the enemy is within the y-range of the sword
+                        if (
+                            (y_start >= this.transform.y &&
+                                y_end <=
+                                    this.transform.y + this.player.height) ||
+                            (y_start <= this.transform.y &&
+                                y_end >= this.transform.y + this.player.height)
+                        ) {
+                            this.parent.destroy()
+                            SceneManager.changeScene(2)
+                        }
                     }
                 }
             }
@@ -423,9 +436,17 @@ class SwordGameObject extends GameObject {
 
 class EnemyComponent extends Component {
     name = 'EnemyComponent'
+    constructor(walking, x_start, y_start, id) {
+        super()
+        this.walking = walking
+        this.x_start = x_start
+        this.y_start = y_start
+        this.id = id
+    }
+
     start() {
         // Instantiate a sword
-        GameObject.instantiate(new EnemySwordGameObject())
+        GameObject.instantiate(new EnemySwordGameObject(this.id))
 
         // Player obj
         this.player = {
@@ -439,9 +460,8 @@ class EnemyComponent extends Component {
             nearPlayer: false,
         }
 
-        // Player x and y pos
-        this.transform.x = 200
-        this.transform.y = 200
+        this.transform.x = this.x_start
+        this.transform.y = this.y_start
 
         // Gravity and Friction variables
         this.gravity = 0.6
@@ -456,7 +476,8 @@ class EnemyComponent extends Component {
         let floorGameObject = GameObject.getObjectByName('FloorGameObject')
         let floorComponent = floorGameObject.getComponent('FloorComponent')
         // If the player is in the air then apply the effect of gravity
-        if (!this.player.canJump) this.player.y_v += this.gravity
+        if (!this.player.canJump && this.player.y_v <= 12)
+            this.player.y_v += this.gravity
 
         // Updating the y and x coordinates of the player
         this.transform.y += this.player.y_v
@@ -540,14 +561,34 @@ class EnemyComponent extends Component {
         )
     }
 }
+
 class EnemyGameObject extends GameObject {
     name = 'EnemyGameObject'
+    constructor(walking, x_start, y_start, id) {
+        super()
+        this.walking = walking
+        this.x_start = x_start
+        this.y_start = y_start
+        this.id = id
+    }
     start() {
-        this.addComponent(new EnemyComponent())
+        this.addComponent(
+            new EnemyComponent(
+                this.walking,
+                this.x_start,
+                this.y_start,
+                this.id
+            )
+        )
     }
 }
+
 class EnemySwordComponent extends Component {
     name = 'EnemySwordComponent'
+    constructor(id) {
+        super()
+        this.id = id
+    }
     start() {
         this.sword = {
             canSwing: true,
@@ -565,114 +606,123 @@ class EnemySwordComponent extends Component {
         this.gravity = 0.3
         this.freezeTime = 0
         this.maxFreezeTime = 2
+        this.found = false
     }
     update() {
         // If the player is alive
-        if (GameObject.getObjectByName('EnemyGameObject')) {
-            let playerGameObject = GameObject.getObjectByName('EnemyGameObject')
-            let playerComponent =
-                playerGameObject.getComponent('EnemyComponent')
+        this.found = false
+        let enemies = GameObject.getObjectsByName('EnemyGameObject')
+        for (let enemy of enemies) {
+            let enemyComponent = enemy.getComponent('EnemyComponent')
+            // find matching id
+            if (enemyComponent.id == this.id) {
+                this.found = true
+                let playerComponent = enemyComponent
 
-            // Change sides based off where the player is
-            // Don't let it change while swinging
-            if (!this.isSwinging) {
+                // Change sides based off where the player is
+                // Don't let it change while swinging
+                if (!this.isSwinging) {
+                    if (playerComponent.player.direction == 0) {
+                        this.transform.x =
+                            playerComponent.transform.x +
+                            playerComponent.player.width / 3
+                        this.transform.y =
+                            playerComponent.transform.y +
+                            playerComponent.player.height / 1.5
+                    } else {
+                        this.transform.x =
+                            playerComponent.transform.x +
+                            (2 * playerComponent.player.width) / 3
+                        this.transform.y =
+                            playerComponent.transform.y +
+                            playerComponent.player.height / 1.5
+                    }
+                }
+
+                // swing sword
+                // 1. Check if canSwing and not currently swinging
+                // 2. If currently swinging, progress swinging animation
+                // 3. When swing doine set back to original pos
+
+                // if player is facing to the right
                 if (playerComponent.player.direction == 0) {
-                    this.transform.x =
-                        playerComponent.transform.x +
-                        playerComponent.player.width / 3
-                    this.transform.y =
-                        playerComponent.transform.y +
-                        playerComponent.player.height / 1.5
-                } else {
-                    this.transform.x =
-                        playerComponent.transform.x +
-                        (2 * playerComponent.player.width) / 3
-                    this.transform.y =
-                        playerComponent.transform.y +
-                        playerComponent.player.height / 1.5
+                    if (this.sword.isSwinging) {
+                        this.swingTime += 60 / 1000
+                        this.sword.lerpx = SwordComponent.lerp(
+                            this.sword.lerpx,
+                            this.transform.x + this.sword.height,
+                            this.swingTime / this.maxTime
+                        )
+                        this.sword.lerpy = SwordComponent.lerp(
+                            this.sword.lerpy,
+                            playerComponent.transform.y +
+                                playerComponent.player.height / 1.5,
+                            this.swingTime / this.maxTime
+                        )
+                    }
+                    // if the player is not swinging
+                    else {
+                        this.sword.lerpx = SwordComponent.lerp(
+                            this.sword.lerpx,
+                            this.transform.x,
+                            300 / 1000
+                        )
+                        this.sword.lerpy = this.transform.y - this.sword.height
+                    }
                 }
-            }
-
-            // swing sword
-            // 1. Check if canSwing and not currently swinging
-            // 2. If currently swinging, progress swinging animation
-            // 3. When swing doine set back to original pos
-
-            // if player is facing to the right
-            if (playerComponent.player.direction == 0) {
-                if (this.sword.isSwinging) {
-                    this.swingTime += 60 / 1000
-                    this.sword.lerpx = SwordComponent.lerp(
-                        this.sword.lerpx,
-                        this.transform.x + this.sword.height,
-                        this.swingTime / this.maxTime
-                    )
-                    this.sword.lerpy = SwordComponent.lerp(
-                        this.sword.lerpy,
-                        playerComponent.transform.y +
-                            playerComponent.player.height / 1.5,
-                        this.swingTime / this.maxTime
-                    )
-                }
-                // if the player is not swinging
+                // if player is facing to the left
                 else {
-                    this.sword.lerpx = SwordComponent.lerp(
-                        this.sword.lerpx,
-                        this.transform.x,
-                        300 / 1000
-                    )
-                    this.sword.lerpy = this.transform.y - this.sword.height
+                    if (this.sword.isSwinging) {
+                        this.swingTime += 60 / 1000
+                        this.sword.lerpx = SwordComponent.lerp(
+                            this.sword.lerpx,
+                            this.transform.x - this.sword.height,
+                            this.swingTime / this.maxTime
+                        )
+                        this.sword.lerpy = SwordComponent.lerp(
+                            this.sword.lerpy,
+                            playerComponent.transform.y +
+                                playerComponent.player.height / 1.5,
+                            this.swingTime / this.maxTime
+                        )
+                    }
+                    // If the player is not swinging
+                    else {
+                        this.sword.lerpx = SwordComponent.lerp(
+                            this.sword.lerpx,
+                            this.transform.x,
+                            300 / 1000
+                        )
+                        this.sword.lerpy = this.transform.y - this.sword.height
+                    }
                 }
-            }
-            // if player is facing to the left
-            else {
-                if (this.sword.isSwinging) {
-                    this.swingTime += 60 / 1000
-                    this.sword.lerpx = SwordComponent.lerp(
-                        this.sword.lerpx,
-                        this.transform.x - this.sword.height,
-                        this.swingTime / this.maxTime
-                    )
-                    this.sword.lerpy = SwordComponent.lerp(
-                        this.sword.lerpy,
-                        playerComponent.transform.y +
-                            playerComponent.player.height / 1.5,
-                        this.swingTime / this.maxTime
-                    )
+                let prob = Math.random()
+                this.freezeTime += Time.deltaTime
+                if (playerComponent.player.nearPlayer) {
+                    if (
+                        prob >= 0.97 &&
+                        this.freezeTime >= this.maxFreezeTime &&
+                        this.sword.canSwing &&
+                        !this.sword.isSwinging
+                    ) {
+                        this.freezeTime = 0
+                        this.swingTime = 0
+                        this.sword.isSwinging = true
+                        this.sword.canSwing = false
+                    }
                 }
-                // If the player is not swinging
-                else {
-                    this.sword.lerpx = SwordComponent.lerp(
-                        this.sword.lerpx,
-                        this.transform.x,
-                        300 / 1000
-                    )
-                    this.sword.lerpy = this.transform.y - this.sword.height
-                }
-            }
-            let prob = Math.random()
-            this.freezeTime += Time.deltaTime
-            if (playerComponent.player.nearPlayer) {
-                if (
-                    prob >= 0.97 &&
-                    this.freezeTime >= this.maxFreezeTime &&
-                    this.sword.canSwing &&
-                    !this.sword.isSwinging
-                ) {
-                    this.freezeTime = 0
+                if (this.sword.isSwinging && this.swingTime >= this.maxTime) {
                     this.swingTime = 0
-                    this.sword.isSwinging = true
-                    this.sword.canSwing = false
+                    this.sword.isSwinging = false
+                    this.sword.canSwing = true
                 }
+                break
             }
-            if (this.sword.isSwinging && this.swingTime >= this.maxTime) {
-                this.swingTime = 0
-                this.sword.isSwinging = false
-                this.sword.canSwing = true
-            }
+            this.found = false
         }
         // If the player dies let the sword fall to the floor
-        else {
+        if (!this.found) {
+            this.sword.isSwinging = false
             if (!this.sword.stuck) {
                 let platformGameObject =
                     GameObject.getObjectByName('PlatformGameObject')
@@ -689,7 +739,6 @@ class EnemySwordComponent extends Component {
 
                 // Updating the y and x coordinates of the player
                 this.transform.y += this.sword.y_v
-
                 // Check for collions with the platform
                 for (let i = 0; i < platformComponent.platforms.length; i++) {
                     let plat = platformComponent.platforms[i]
@@ -773,8 +822,12 @@ class EnemySwordComponent extends Component {
 
 class EnemySwordGameObject extends GameObject {
     name = 'EnemySwordGameObject'
+    constructor(id) {
+        super()
+        this.id = id
+    }
     start() {
-        this.addComponent(new EnemySwordComponent())
+        this.addComponent(new EnemySwordComponent(this.id))
     }
 }
 
@@ -809,9 +862,9 @@ class PlatformComponent extends Component {
         })
 
         this.platforms.push({
-            x: 20,
+            x: -50,
             y: 100,
-            width: 210,
+            width: 310,
             height: 15,
             passable: true,
         })
@@ -1046,10 +1099,8 @@ class MainScene extends Scene {
                 new PlayerComponent()
             )
         )
-        this.addGameObject(
-            new GameObject('EnemyGameObject').addComponent(new EnemyComponent())
-        )
-
+        this.addGameObject(new EnemyGameObject(false, 200, 200, 1))
+        this.addGameObject(new EnemyGameObject(true, -40, 60, 2))
         this.addGameObject(
             new GameObject('PlatformGameObject').addComponent(
                 new PlatformComponent()
