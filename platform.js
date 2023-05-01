@@ -163,6 +163,10 @@ class PlayerComponent extends Component {
     start() {
         // Instantiate the sword
         GameObject.instantiate(new SwordGameObject())
+
+        // Instantiate the shield
+        GameObject.instantiate(new ShieldGameObject())
+
         // Player obj
         this.player = {
             x_v: 0,
@@ -280,10 +284,10 @@ class PlayerComponent extends Component {
                 this.player.canJump = true
                 this.transform.y = plat.y - this.player.height
             }
-            if (this.transform.y >= plat.y + 400) {
-                this.parent.destroy()
-                SceneManager.changeScene(2)
-            }
+            // if (this.transform.y >= plat.y + 400) {
+            //     this.parent.destroy()
+            //     SceneManager.changeScene(2)
+            // }
 
             // Check for collisions with the enemy sword
             let swordGameObjects = GameObject.getObjectsByName(
@@ -461,7 +465,91 @@ class SwordComponent extends Component {
 class SwordGameObject extends GameObject {
     name = 'SwordGameObject'
     start() {
-        this.addComponent(new SwordComponent())
+        this.addComponent(new SwordComponent()).layer = 1
+    }
+}
+
+class ShieldComponent extends Component {
+    name = 'ShieldComponent'
+    start() {
+        this.shield = {
+            canBlock: true,
+            isBlocking: false,
+            height: 18,
+            width: 10,
+            lerpx: 0,
+            lerpy: 0,
+            sitting: false,
+        }
+        this.swingTime = 0
+        this.maxTime = 1
+        this.freezeTime = 0
+        this.maxFreezeTime = 1
+    }
+    update() {
+        let playerGameObject = GameObject.getObjectByName('PlayerGameObject')
+        let playerComponent = playerGameObject.getComponent('PlayerComponent')
+        this.shield.sitting = playerComponent.player.sitting
+        if (!this.shield.sitting) {
+            if (playerComponent.player.x_v < 0) {
+                this.transform.x =
+                    playerComponent.transform.x -
+                    playerComponent.player.width / 6
+                this.transform.y =
+                    playerComponent.transform.y +
+                    playerComponent.player.height / 1.2
+            } else {
+                this.transform.x =
+                    playerComponent.transform.x +
+                    (2 * playerComponent.player.width) / 3
+                this.transform.y =
+                    playerComponent.transform.y +
+                    playerComponent.player.height / 1.2
+            }
+        }
+    }
+    draw(ctx) {
+        if (!this.shield.sitting) {
+            ctx.fillStyle = 'black'
+            ctx.fillRect(
+                this.transform.x,
+                this.transform.y - 5,
+                this.shield.width,
+                -(this.shield.height - 5)
+            )
+            ctx.strokeStyle = 'black'
+            ctx.beginPath()
+            ctx.moveTo(this.transform.x + 1, this.transform.y - 7)
+            ctx.lineTo(
+                this.transform.x + this.shield.width / 2,
+                this.transform.y - 2
+            )
+            ctx.lineTo(
+                this.transform.x + this.shield.width / 2,
+                this.transform.y - 2
+            )
+            ctx.lineTo(
+                this.transform.x + this.shield.width - 1,
+                this.transform.y - 7
+            )
+            // ctx.lineTo(this.transform.x + 1, this.transform.y - 7)
+            // ctx.lineTo(
+            //     this.transform.x + this.shield.width / 2,
+            //     this.transform.y - 2
+            // )
+            ctx.stroke()
+            // ctx.strokeStyle = 'black'
+            // ctx.beginPath()
+            // ctx.arc(this.transform.x, this.transform.y, 5, 0, 2 * Math.PI)
+            // ctx.stroke()
+        }
+    }
+}
+
+class ShieldGameObject extends GameObject {
+    name = 'ShieldGameObject'
+    start() {
+        this.addComponent(new ShieldComponent()).layer = 1
     }
 }
 
@@ -662,7 +750,7 @@ class EnemyGameObject extends GameObject {
                 this.y_start,
                 this.id
             )
-        )
+        ).layer = -1
     }
 }
 
@@ -909,7 +997,7 @@ class EnemySwordGameObject extends GameObject {
         this.id = id
     }
     start() {
-        this.addComponent(new EnemySwordComponent(this.id))
+        this.addComponent(new EnemySwordComponent(this.id)).layer = -1
     }
 }
 
@@ -919,6 +1007,9 @@ class PlatformComponent extends Component {
         // The platforms
         this.platforms = []
 
+        // =======================================================
+        // Middle area platforms
+        // =======================================================
         this.platforms.push({
             x: 150,
             y: 180,
@@ -950,12 +1041,24 @@ class PlatformComponent extends Component {
             height: 15,
             passable: true,
         })
+
+        // =======================================================
+        // Lower Area Platforms
+        // =======================================================
+
+        // this.platforms.push({
+        //     x: -110,
+        //     y: 580,
+        //     width: 110,
+        //     height: 15,
+        //     passable: true,
+        // })
     }
     draw(ctx) {
         // Create platforms
 
         // Render platforms
-        ctx.fillStyle = '#0c068c'
+        ctx.fillStyle = '#4250ed'
         for (let i = 0; i < this.platforms.length; i++) {
             ctx.fillRect(
                 this.platforms[i].x,
@@ -979,7 +1082,7 @@ class FloorComponent extends Component {
         }
     }
     draw(ctx) {
-        ctx.fillStyle = '#0c068c'
+        ctx.fillStyle = '#19183d'
         ctx.fillRect(
             this.floor.x,
             this.floor.y,
@@ -1175,15 +1278,15 @@ class MainScene extends Scene {
     start() {
         this.addGameObject(
             new GameObject('BenchGameObject').addComponent(new BenchComponent())
-        )
+        ).layer = -5
         this.addGameObject(
             new GameObject('PlayerGameObject').addComponent(
                 new PlayerComponent()
             )
-        )
-        this.addGameObject(new EnemyGameObject(1))
-        this.addGameObject(new EnemyGameObject(2))
-        this.addGameObject(new EnemyGameObject(3))
+        ).layer = 0
+        this.addGameObject(new EnemyGameObject(1)).layer = -1
+        this.addGameObject(new EnemyGameObject(2)).layer = -1
+        this.addGameObject(new EnemyGameObject(3)).layer = -1
         this.addGameObject(
             new GameObject('PlatformGameObject').addComponent(
                 new PlatformComponent()
