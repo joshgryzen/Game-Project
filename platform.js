@@ -123,22 +123,34 @@ class MainController extends Component {
                 for (let i = 1; i <= this.enemy_count; i++) {
                     total_ids.push(i)
                 }
-                for (let enemyGameObject of enemyGamesObjects) {
-                    let enemyComponent =
-                        enemyGameObject.getComponent('EnemyComponent')
-                    ids.push(enemyComponent.id)
-                }
-                for (let id of total_ids) {
-                    if (!ids.includes(id)) {
-                        for (let enemySwordGameObject of enemySwordGameObjects) {
-                            let enemySwordComponent =
-                                enemySwordGameObject.getComponent(
-                                    'EnemySwordComponent'
-                                )
-                            if (enemySwordComponent.id == id)
-                                enemySwordGameObject.destroy()
-                        }
+                // if all enemies are dead
+                if (enemyGamesObjects.length == 0) {
+                    for (let enemySwordGameObject of enemySwordGameObjects) {
+                        enemySwordGameObject.destroy()
+                    }
+                    for (let id of total_ids) {
                         GameObject.instantiate(new EnemyGameObject(id))
+                    }
+                }
+                // if some or none are dead
+                else {
+                    for (let enemyGameObject of enemyGamesObjects) {
+                        let enemyComponent =
+                            enemyGameObject.getComponent('EnemyComponent')
+                        ids.push(enemyComponent.id)
+                    }
+                    for (let id of total_ids) {
+                        if (!ids.includes(id)) {
+                            for (let enemySwordGameObject of enemySwordGameObjects) {
+                                let enemySwordComponent =
+                                    enemySwordGameObject.getComponent(
+                                        'EnemySwordComponent'
+                                    )
+                                if (enemySwordComponent.id == id)
+                                    enemySwordGameObject.destroy()
+                            }
+                            GameObject.instantiate(new EnemyGameObject(id))
+                        }
                     }
                 }
             }
@@ -338,6 +350,8 @@ class SwordComponent extends Component {
         }
         this.swingTime = 0
         this.maxTime = 1
+        this.freezeTime = 0
+        this.maxFreezeTime = 1
     }
     update() {
         let playerGameObject = GameObject.getObjectByName('PlayerGameObject')
@@ -413,12 +427,14 @@ class SwordComponent extends Component {
                     this.sword.lerpy = this.transform.y - this.sword.height
                 }
             }
-
+            this.freezeTime += Time.deltaTime
             if (
                 keysDown[' '] &&
                 this.sword.canSwing &&
-                !this.sword.isSwinging
+                !this.sword.isSwinging &&
+                this.freezeTime >= this.maxFreezeTime
             ) {
+                this.freezeTime = 0
                 this.swingTime = 0
                 this.sword.isSwinging = true
                 this.sword.canSwing = false
@@ -483,6 +499,8 @@ class EnemyComponent extends Component {
         this.friction = 0.7
     }
     update() {
+        // if (!this.parent.markedForDestroy) {
+        // }
         let platformGameObject =
             GameObject.getObjectByName('PlatformGameObject')
         let platformComponent =
@@ -561,7 +579,7 @@ class EnemyComponent extends Component {
             let dist_x = this.transform.x - playerComponent.transform.x
 
             let dist_y = this.transform.y - playerComponent.transform.y
-            if (Math.abs(dist_y) <= 50 && Math.abs(dist_x) <= 200) {
+            if (Math.abs(dist_y) <= 50 && Math.abs(dist_x) <= 100) {
                 this.player.nearPlayer = true
                 dist_x <= 0
                     ? (this.player.direction = 0)
@@ -683,7 +701,7 @@ class EnemySwordComponent extends Component {
             if (enemyComponent.id == this.id) {
                 this.found = true
                 let playerComponent = enemyComponent
-
+                // console.log(playerComponent)
                 // Change sides based off where the player is
                 // Don't let it change while swinging
                 if (!this.isSwinging) {
