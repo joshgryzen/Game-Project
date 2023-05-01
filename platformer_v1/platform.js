@@ -3,44 +3,47 @@ import '/engine/engine.js'
 //-----------------------------------------------------
 //Start
 
-class StartController extends Component {
+class CheckpointComponent extends Component {
+    name = 'CheckpointComponent'
+    benchId = 0
+    spawn_x = 100
+    spawn_y = 200
     start() {}
+    updateId(id) {
+        this.benchId = id
+        // document.cookies = this.benchId
+    }
+    getId() {
+        return this.benchId
+    }
+    setSpawnLocation(x, y) {
+        this.spawn_x = x
+        this.spawn_y = y
+    }
+    getSpawnX() {
+        return this.spawn_x
+    }
+    getSpawnY() {
+        return this.spawn_y
+    }
+}
+class StartController extends Component {
+    start() {
+        this.freezeTime = 0
+        this.maxFreezeTime = 0.5
+        GameObject.getObjectByName('CheckpointGameObject').doNotDestroyOnLoad()
+    }
     update() {
-        if (keysDown['a']) {
+        this.freezeTime += Time.deltaTime
+        if (keysDown['a'] && this.freezeTime >= this.maxFreezeTime) {
             SceneManager.changeScene(1)
         }
     }
 }
 
-// class StartDrawComponent extends Component {
-//     draw(ctx) {
-//         ctx.fillStyle = 'black'
-//         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height)
-//         ctx.fillStyle = 'white'
-//         ctx.font = '40px Courier'
-//         ctx.fillText('Welcome to Game', 100, 100)
-//     }
-// }
-
-class StartControllerGameObject extends GameObject {
-    start() {
-        this.addComponent(new StartController())
-    }
-}
-
-// class StartDrawGameObject extends GameObject {
-//     start() {
-//         this.addComponent(new StartDrawComponent())
-//     }
-// }
-
 class StartCameraComponent extends Component {
     start() {}
-    update() {
-        // this.parent.transform.x += 0
-        // this.parent.transform.sx = 10;
-        // this.parent.transform.sy = 10;
-    }
+    update() {}
 }
 
 class StartScene extends Scene {
@@ -49,7 +52,9 @@ class StartScene extends Scene {
     }
     start() {
         this.addGameObject(
-            new StartControllerGameObject().addComponent(new StartController())
+            new GameObject('StartConttrollerGameObject').addComponent(
+                new StartController()
+            )
         )
         // this.addGameObject(
         //     new GameObject('WelcomeToPlatformerGameObject').addComponent(
@@ -57,6 +62,11 @@ class StartScene extends Scene {
         //     ),
         //     new Vector2(-125, 20)
         // )
+        this.addGameObject(
+            new GameObject('CheckpointGameObject').addComponent(
+                new CheckpointComponent()
+            )
+        )
         Camera.main.parent.addComponent(new StartCameraComponent())
     }
 }
@@ -94,9 +104,22 @@ class MainCameraComponent extends Component {
 
 class MainController extends Component {
     start() {}
-    handleUpdate(component, eventName) {
-        // if (eventName == 'passing') {
-        // }
+    update() {
+        let playerGameObject = GameObject.getObjectByName('PlayerGameObject')
+        let playerComponent = playerGameObject.getComponent('PlayerComponent')
+        console.log(playerComponent.player.sitting)
+        if (playerComponent.player.sitting) {
+            let enemyGameObject = GameObject.getObjectByName('EnemyGameObject')
+            let enemySwordGameObject = GameObject.getObjectByName(
+                'EnemySwordGameObject'
+            )
+
+            if (!enemyGameObject) {
+                if (enemySwordGameObject) enemySwordGameObject.destroy()
+                GameObject.instantiate(new EnemyGameObject())
+                GameObject.instantiate(new EnemySwordGameObject())
+            }
+        }
     }
 }
 
@@ -114,10 +137,21 @@ class PlayerComponent extends Component {
             sitting: false,
         }
 
-        // Player x and y pos
-        this.transform.x = 100
-        this.transform.y = 200
+        // get any checkpoints
+        let checkpointGameObject = GameObject.getObjectByName(
+            'CheckpointGameObject'
+        )
 
+        let checkpointComponent = checkpointGameObject.getComponent(
+            'CheckpointComponent'
+        )
+
+        this.transform.x = checkpointComponent.getSpawnX()
+        this.transform.y = checkpointComponent.getSpawnY()
+
+        if (checkpointComponent.getId() != 0) {
+            this.player.sitting = true
+        }
         // Gravity and Friction variables
         this.gravity = 0.3
         this.friction = 0.7
@@ -202,10 +236,51 @@ class PlayerComponent extends Component {
             let plat = floorComponent.floor
             if (
                 plat.y <= this.transform.y + this.player.height &&
-                this.transform.y + this.player.height <= plat.y + plat.height
+                this.transform.y + this.player.height <= plat.y + plat.height &&
+                this.transform.x + this.player.width >= plat.x &&
+                this.transform.x <= plat.x + plat.width
             ) {
                 this.player.canJump = true
                 this.transform.y = plat.y - this.player.height
+            }
+            if (this.transform.y >= plat.y + 400) {
+                this.parent.destroy()
+                SceneManager.changeScene(2)
+            }
+
+            // Check for collisions with the player sword
+            let swordGameObject = GameObject.getObjectByName(
+                'EnemySwordGameObject'
+            )
+            let swordComponent = swordGameObject.getComponent(
+                'EnemySwordComponent'
+            )
+
+            // Get coordinates of sword
+            let x_start = swordComponent.transform.x
+            let y_start = swordComponent.transform.y
+            let x_end = swordComponent.sword.lerpx
+            let y_end = swordComponent.sword.lerpy
+
+            // First check if the sword is swinging
+            if (swordComponent.sword.isSwinging) {
+                // Check if the enemy is within the x-range of the sword
+                if (
+                    (x_start >= this.transform.x &&
+                        x_end <= this.transform.x + this.player.width) ||
+                    (x_start <= this.transform.x && x_end >= this.transform.x)
+                ) {
+                    // Check if the enemy is within the y-range of the sword
+                    if (
+                        (y_start >= this.transform.y &&
+                            y_end <= this.transform.y + this.player.height) ||
+                        (y_start <= this.transform.y &&
+                            y_end >= this.transform.y + this.player.height)
+                    ) {
+                        this.parent.destroy()
+                        SceneManager.changeScene(2)
+                    }
+                }
             }
         }
     }
@@ -350,6 +425,7 @@ class EnemyComponent extends Component {
             width: 20,
             // 0 is facing right, 1 is facing left
             direction: 0,
+            nearPlayer: false,
         }
 
         // Player x and y pos
@@ -406,9 +482,12 @@ class EnemyComponent extends Component {
         // Check direction to face
         let dist_x = this.transform.x - playerComponent.transform.x
         dist_x <= 0 ? (this.player.direction = 0) : (this.player.direction = 1)
-        // console.log(
-        //     `dist_x: ${dist_x}, this.player.direction: ${this.player.direction}`
-        // )
+
+        let dist_y = this.transform.y - playerComponent.transform.y
+
+        if (Math.abs(dist_y) <= 50 && Math.abs(dist_x) <= 50) {
+            this.player.nearPlayer = true
+        } else this.player.nearPlayer = false
 
         // Check for collisions with the player sword
         let swordGameObject = GameObject.getObjectByName('SwordGameObject')
@@ -450,7 +529,12 @@ class EnemyComponent extends Component {
         )
     }
 }
-
+class EnemyGameObject extends GameObject {
+    name = 'EnemyGameObject'
+    start() {
+        this.addComponent(new EnemyComponent())
+    }
+}
 class EnemySwordComponent extends Component {
     name = 'EnemySwordComponent'
     start() {
@@ -467,6 +551,8 @@ class EnemySwordComponent extends Component {
         this.swingTime = 0
         this.maxTime = 1
         this.gravity = 0.3
+        this.freezeTime = 0
+        this.maxFreezeTime = 2
     }
     update() {
         // If the player is alive
@@ -474,20 +560,25 @@ class EnemySwordComponent extends Component {
             let playerGameObject = GameObject.getObjectByName('EnemyGameObject')
             let playerComponent =
                 playerGameObject.getComponent('EnemyComponent')
-            if (playerComponent.player.direction == 0) {
-                this.transform.x =
-                    playerComponent.transform.x +
-                    playerComponent.player.width / 3
-                this.transform.y =
-                    playerComponent.transform.y +
-                    playerComponent.player.height / 1.5
-            } else {
-                this.transform.x =
-                    playerComponent.transform.x +
-                    (2 * playerComponent.player.width) / 3
-                this.transform.y =
-                    playerComponent.transform.y +
-                    playerComponent.player.height / 1.5
+
+            // Change sides based off where the player is
+            // Don't let it change while swinging
+            if (!this.isSwinging) {
+                if (playerComponent.player.direction == 0) {
+                    this.transform.x =
+                        playerComponent.transform.x +
+                        playerComponent.player.width / 3
+                    this.transform.y =
+                        playerComponent.transform.y +
+                        playerComponent.player.height / 1.5
+                } else {
+                    this.transform.x =
+                        playerComponent.transform.x +
+                        (2 * playerComponent.player.width) / 3
+                    this.transform.y =
+                        playerComponent.transform.y +
+                        playerComponent.player.height / 1.5
+                }
             }
 
             // swing sword
@@ -496,7 +587,7 @@ class EnemySwordComponent extends Component {
             // 3. When swing doine set back to original pos
 
             // if player is facing to the right
-            if (playerComponent.player.direction > 0) {
+            if (playerComponent.player.direction == 0) {
                 if (this.sword.isSwinging) {
                     this.swingTime += 60 / 1000
                     this.sword.lerpx = SwordComponent.lerp(
@@ -547,6 +638,26 @@ class EnemySwordComponent extends Component {
                     this.sword.lerpy = this.transform.y - this.sword.height
                 }
             }
+            let prob = Math.random()
+            this.freezeTime += Time.deltaTime
+            if (playerComponent.player.nearPlayer) {
+                if (
+                    prob >= 0.97 &&
+                    this.freezeTime >= this.maxFreezeTime &&
+                    this.sword.canSwing &&
+                    !this.sword.isSwinging
+                ) {
+                    this.freezeTime = 0
+                    this.swingTime = 0
+                    this.sword.isSwinging = true
+                    this.sword.canSwing = false
+                }
+            }
+            if (this.sword.isSwinging && this.swingTime >= this.maxTime) {
+                this.swingTime = 0
+                this.sword.isSwinging = false
+                this.sword.canSwing = true
+            }
         }
         // If the player dies let the sword fall to the floor
         else {
@@ -592,7 +703,6 @@ class EnemySwordComponent extends Component {
                 300 / 1000
             )
             this.sword.lerpy = this.transform.y - this.sword.height
-            // console.log(this.transform.y)
         }
     }
     draw(ctx) {
@@ -602,6 +712,13 @@ class EnemySwordComponent extends Component {
         ctx.moveTo(this.transform.x, this.transform.y)
         ctx.lineTo(this.sword.lerpx, this.sword.lerpy)
         ctx.stroke()
+    }
+}
+
+class EnemySwordGameObject extends GameObject {
+    name = 'EnemySwordGameObject'
+    start() {
+        this.addComponent(new EnemySwordComponent())
     }
 }
 
@@ -665,7 +782,7 @@ class FloorComponent extends Component {
         this.floor = {
             x: 0,
             y: 500,
-            width: window.innerWidth,
+            width: 1000,
             height: 15,
             passable: false,
         }
@@ -716,12 +833,14 @@ class BenchComponent extends Component {
     name = 'BenchComponent'
     start() {
         this.bench = {
+            id: 1,
             x: 15,
             y: 500,
             height: 12,
             width: 70,
-            checkPoint: false,
         }
+        this.sit_x
+        this.sit_y
         this.freezeTime = 0
         this.maxFreezeTime = 0.5
     }
@@ -730,8 +849,20 @@ class BenchComponent extends Component {
         let playerGameObject = GameObject.getObjectByName('PlayerGameObject')
         let player = playerGameObject.getComponent('PlayerComponent')
 
+        this.sit_x =
+            (this.bench.x + this.bench.width) / 2 - player.player.width / 2
+        this.sit_y =
+            this.bench.y - this.bench.height * 1.2 - player.player.height
+
+        let checkpointGameObject = GameObject.getObjectByName(
+            'CheckpointGameObject'
+        )
+        let checkpointComponent = checkpointGameObject.getComponent(
+            'CheckpointComponent'
+        )
+
         if (
-            player.transform.x >= this.bench.x &&
+            player.transform.x + player.player.width >= this.bench.x &&
             player.transform.x <= this.bench.width + this.bench.x
         ) {
             if (
@@ -744,19 +875,18 @@ class BenchComponent extends Component {
                 ) {
                     this.freezeTime = 0
                     if (!player.player.sitting) {
-                        this.bench.checkPoint = true
+                        checkpointComponent.updateId(this.bench.id)
                         player.player.sitting = true
-                        player.transform.x =
-                            (this.bench.x + this.bench.width) / 2 -
-                            player.player.width / 2
-                        player.transform.y =
-                            this.bench.y -
-                            this.bench.height * 1.2 -
-                            player.player.height
+
+                        checkpointComponent.setSpawnLocation(
+                            this.sit_x,
+                            this.sit_y
+                        )
+                        player.transform.x = this.sit_x
+                        player.transform.y = this.sit_y
                     } else {
                         player.player.sitting = false
                     }
-                    console.log(player.player.sitting)
                 }
             }
         }
@@ -859,6 +989,7 @@ class MainScene extends Scene {
         //     new Vector2(0, 0),
         //     new Vector2(10, 10)
         // )
+        // this.addGameObject(GameObject.getObjectByName('CheckpointGameObject'))
         this.addGameObject(
             new GameObject('BenchGameObject').addComponent(new BenchComponent())
         )
@@ -886,6 +1017,11 @@ class MainScene extends Scene {
         this.addGameObject(
             new GameObject('FloorGameObject').addComponent(new FloorComponent())
         )
+        this.addGameObject(
+            new GameObject('MainControllerObject').addComponent(
+                new MainController()
+            )
+        )
 
         Camera.main.parent.addComponent(new MainCameraComponent())
     }
@@ -895,28 +1031,52 @@ class MainScene extends Scene {
 //End
 
 class EndController extends Component {
+    start() {
+        this.freezeTime = 0
+        this.maxFreezeTime = 1
+    }
     update() {
-        if (keysDown['a']) {
-            SceneManager.changeScene(0)
+        this.freezeTime += Time.deltaTime
+        if (this.freezeTime >= this.maxFreezeTime) {
+            if (keysDown['a']) {
+                SceneManager.changeScene(0)
+            } else if (keysDown['Enter']) {
+                SceneManager.changeScene(1)
+            }
         }
     }
 }
 
-class EndDrawComponent extends Component {
-    draw(ctx) {
-        ctx.fillStyle = 'black'
-        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height)
-        ctx.fillStyle = 'red'
-        ctx.fillText('You died', 100, 100)
-    }
+// class EndDrawComponent extends Component {
+//     draw(ctx) {
+//         ctx.fillStyle = 'black'
+//         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height)
+//         ctx.fillStyle = 'red'
+//         ctx.fillText('You died', 100, 100)
+//     }
+// }
+
+class EndCameraComponent extends Component {
+    start() {}
+    update() {}
 }
 
 class EndScene extends Scene {
+    constructor() {
+        super('black')
+    }
     start() {
         this.addGameObject(new GameObject().addComponent(new EndController()))
+        // this.addGameObject(
+        //     new GameObject().addComponent(new EndDrawComponent())
+        // )
         this.addGameObject(
-            new GameObject().addComponent(new EndDrawComponent())
+            new GameObject('DeathGameObject').addComponent(
+                new Text('You Died! Press Enter to Respawn.', 'red')
+            ),
+            new Vector2(-150, 0)
         )
+        Camera.main.parent.addComponent(new EndCameraComponent())
     }
 }
 
