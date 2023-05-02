@@ -162,7 +162,9 @@ class PlayerComponent extends Component {
     name = 'PlayerComponent'
     start() {
         // Instantiate the sword
-        GameObject.instantiate(new SwordGameObject())
+        GameObject.instantiate(
+            new SwordGameObject().addComponent(new Line('black', 3))
+        )
 
         // Instantiate the shield
         GameObject.instantiate(new ShieldGameObject())
@@ -189,6 +191,8 @@ class PlayerComponent extends Component {
 
         this.transform.x = checkpointComponent.getSpawnX()
         this.transform.y = checkpointComponent.getSpawnY()
+        this.transform.sx = this.player.width
+        this.transform.sy = this.player.height
 
         if (checkpointComponent.getId() != 0) {
             this.player.sitting = true
@@ -210,6 +214,7 @@ class PlayerComponent extends Component {
         let floorComponent = floorGameObject.getComponent('FloorComponent')
 
         if (!this.player.sitting) {
+            this.parent.layer = 0
             // Move Left
             if (keysDown['ArrowLeft'] || keysDown['a']) {
                 this.transform.x += -2.5
@@ -327,17 +332,17 @@ class PlayerComponent extends Component {
                     }
                 }
             }
-        }
+        } else this.parent.layer = -1
     }
-    draw(ctx) {
-        ctx.fillStyle = '#de0d3a'
-        ctx.fillRect(
-            this.transform.x,
-            this.transform.y,
-            this.player.width,
-            this.player.height
-        )
-    }
+    // draw(ctx) {
+    //     ctx.fillStyle = '#de0d3a'
+    //     ctx.fillRect(
+    //         this.transform.x,
+    //         this.transform.y,
+    //         this.player.width,
+    //         this.player.height
+    //     )
+    // }
 }
 
 class SwordComponent extends Component {
@@ -358,10 +363,16 @@ class SwordComponent extends Component {
         this.maxFreezeTime = 1
     }
     update() {
+        this.transform.sx = this.sword.lerpx
+        this.transform.sy = this.sword.lerpy
         let playerGameObject = GameObject.getObjectByName('PlayerGameObject')
         let playerComponent = playerGameObject.getComponent('PlayerComponent')
+        let shieldGameObject = GameObject.getObjectByName('ShieldGameObject')
+        let shieldComponent = shieldGameObject.getComponent('ShieldComponent')
+
         this.sword.sitting = playerComponent.player.sitting
         if (!this.sword.sitting) {
+            this.parent.layer = 1
             if (playerComponent.player.x_v >= 0) {
                 this.transform.x =
                     playerComponent.transform.x +
@@ -431,35 +442,49 @@ class SwordComponent extends Component {
                     this.sword.lerpy = this.transform.y - this.sword.height
                 }
             }
+
+            // Check is space is pressed and wether or not the sword can swing
+            // If the shield is blocking then the sword cannot swing
+            // There is a small timer so that the player cannot simply spam space
             this.freezeTime += Time.deltaTime
             if (
                 keysDown[' '] &&
                 this.sword.canSwing &&
                 !this.sword.isSwinging &&
-                this.freezeTime >= this.maxFreezeTime
+                this.freezeTime >= this.maxFreezeTime &&
+                !shieldComponent.shield.isBlocking
             ) {
-                this.freezeTime = 0
                 this.swingTime = 0
                 this.sword.isSwinging = true
                 this.sword.canSwing = false
             }
             if (this.sword.isSwinging && this.swingTime >= this.maxTime) {
+                this.freezeTime = 0
                 this.swingTime = 0
                 this.sword.isSwinging = false
                 this.sword.canSwing = true
             }
+        } else {
+            this.parent.layer = -2
+            this.transform.x =
+                playerComponent.transform.x - this.sword.height / 4
+            this.transform.y = playerComponent.transform.y
+            this.transform.sx =
+                playerComponent.transform.x + (3 * this.sword.height) / 4
+            this.transform.sy =
+                playerComponent.transform.y + this.sword.height / 2
         }
     }
-    draw(ctx) {
-        if (!this.sword.sitting) {
-            ctx.strokeStyle = 'black'
-            ctx.lineWidth = 3
-            ctx.beginPath()
-            ctx.moveTo(this.transform.x, this.transform.y)
-            ctx.lineTo(this.sword.lerpx, this.sword.lerpy)
-            ctx.stroke()
-        }
-    }
+    // draw(ctx) {
+    //     if (!this.sword.sitting) {
+    //         ctx.strokeStyle = 'black'
+    //         ctx.lineWidth = 3
+    //         ctx.beginPath()
+    //         ctx.moveTo(this.transform.x, this.transform.y)
+    //         ctx.lineTo(this.sword.lerpx, this.sword.lerpy)
+    //         ctx.stroke()
+    //     }
+    // }
 }
 
 class SwordGameObject extends GameObject {
@@ -481,16 +506,24 @@ class ShieldComponent extends Component {
             lerpy: 0,
             sitting: false,
         }
-        this.swingTime = 0
-        this.maxTime = 1
-        this.freezeTime = 0
+        const originalHeight = this.shield.height
+        const originalWidth = this.shield.width
+
+        this.blockTime = 0
+        this.maxTime = 3
+        this.freezeTime = 1
         this.maxFreezeTime = 1
     }
     update() {
         let playerGameObject = GameObject.getObjectByName('PlayerGameObject')
         let playerComponent = playerGameObject.getComponent('PlayerComponent')
+        let swordGameObject = GameObject.getObjectByName('SwordGameObject')
+        let swordComponent = swordGameObject.getComponent('SwordComponent')
+
+        // Make sure the player is not sitting
         this.shield.sitting = playerComponent.player.sitting
         if (!this.shield.sitting) {
+            this.parent.layer = 1
             if (playerComponent.player.x_v < 0) {
                 this.transform.x =
                     playerComponent.transform.x -
@@ -506,43 +539,114 @@ class ShieldComponent extends Component {
                     playerComponent.transform.y +
                     playerComponent.player.height / 1.2
             }
+
+            // if shield is blocking
+            if (this.shield.isBlocking) {
+                this.blockTime += 60 / 1000
+                // if the player is facing to the right
+                if (playerComponent.player.x_v >= 0) {
+                    let partialTime
+                    this.blockTime * 3 <= this.maxTime
+                        ? (partialTime = this.blockTime * 3)
+                        : (partialTime = this.blockTime)
+                    this.shield.lerpx = ShieldComponent.lerp(
+                        this.shield.lerpx,
+                        this.transform.x + this.shield.width,
+                        partialTime / this.maxTime
+                    )
+                }
+                // if the player is facing to the left
+                else {
+                    let partialTime
+                    this.blockTime * 3 <= this.maxTime
+                        ? (partialTime = this.blockTime * 3)
+                        : (partialTime = this.blockTime)
+                    this.shield.lerpx = ShieldComponent.lerp(
+                        this.shield.lerpx,
+                        this.transform.x - this.shield.width,
+                        partialTime / this.maxTime
+                    )
+                }
+
+                this.shield.lerpy = ShieldComponent.lerp(
+                    this.shield.lerpy,
+                    this.transform.y - this.shield.height / 4,
+                    this.blockTime / this.maxTime
+                )
+                this.transform.x = this.shield.lerpx
+                this.transform.y = this.shield.lerpy
+            }
+            // if the shield is not blocking
+            else {
+                this.shield.lerpx = ShieldComponent.lerp(
+                    this.shield.lerpx,
+                    this.transform.x,
+                    500 / 1000
+                )
+                this.transform.x = this.shield.lerpx
+            }
+
+            // Make sure shield can block, is not currently blocking, and the sword is not swinging
+            // There is a small timer so that the player cannot spam block
+            this.freezeTime += Time.deltaTime
+            if (
+                this.shield.canBlock &&
+                !this.shield.isBlocking &&
+                !swordComponent.sword.isSwinging &&
+                this.freezeTime >= this.maxFreezeTime &&
+                (keysDown['f'] || keysDown['F'])
+            ) {
+                // do something
+                this.shield.lerpx = this.transform.x
+                this.shield.lerpy = this.transform.y
+                this.blockTime = 0
+                this.shield.isBlocking = true
+                this.shield.canBlock = false
+                console.log('I am blocking')
+            }
+            if (this.shield.isBlocking && this.blockTime >= this.maxTime) {
+                console.log('I am no longer blocking')
+                this.freezeTime = 0
+                this.blockTime = 0
+                this.shield.isBlocking = false
+                this.shield.canBlock = true
+            }
+        }
+        // If this player is sitting then move the shield to the player's back
+        else {
+            this.parent.layer = -2
+            this.transform.x =
+                playerComponent.transform.x +
+                (2 * playerComponent.player.width) / 3
+            this.transform.y =
+                playerComponent.transform.y +
+                playerComponent.player.height / 1.2
         }
     }
     draw(ctx) {
-        if (!this.shield.sitting) {
-            ctx.fillStyle = 'black'
-            ctx.fillRect(
-                this.transform.x,
-                this.transform.y - 5,
-                this.shield.width,
-                -(this.shield.height - 5)
-            )
-            ctx.strokeStyle = 'black'
-            ctx.beginPath()
-            ctx.moveTo(this.transform.x + 1, this.transform.y - 7)
-            ctx.lineTo(
-                this.transform.x + this.shield.width / 2,
-                this.transform.y - 2
-            )
-            ctx.lineTo(
-                this.transform.x + this.shield.width / 2,
-                this.transform.y - 2
-            )
-            ctx.lineTo(
-                this.transform.x + this.shield.width - 1,
-                this.transform.y - 7
-            )
-            // ctx.lineTo(this.transform.x + 1, this.transform.y - 7)
-            // ctx.lineTo(
-            //     this.transform.x + this.shield.width / 2,
-            //     this.transform.y - 2
-            // )
-            ctx.stroke()
-            // ctx.strokeStyle = 'black'
-            // ctx.beginPath()
-            // ctx.arc(this.transform.x, this.transform.y, 5, 0, 2 * Math.PI)
-            // ctx.stroke()
-        }
+        ctx.fillStyle = 'black'
+        ctx.fillRect(
+            this.transform.x,
+            this.transform.y - 5,
+            this.shield.width,
+            -(this.shield.height - 5)
+        )
+        ctx.strokeStyle = 'black'
+        ctx.beginPath()
+        ctx.moveTo(this.transform.x + 1, this.transform.y - 7)
+        ctx.lineTo(
+            this.transform.x + this.shield.width / 2,
+            this.transform.y - 2
+        )
+        ctx.lineTo(
+            this.transform.x + this.shield.width / 2,
+            this.transform.y - 2
+        )
+        ctx.lineTo(
+            this.transform.x + this.shield.width - 1,
+            this.transform.y - 7
+        )
+        ctx.stroke()
     }
 }
 
@@ -565,7 +669,9 @@ class EnemyComponent extends Component {
 
     start() {
         // Instantiate a sword
-        GameObject.instantiate(new EnemySwordGameObject(this.id))
+        GameObject.instantiate(
+            new EnemySwordGameObject(this.id).addComponent(new Line('black', 3))
+        )
 
         // Player obj
         this.player = {
@@ -581,6 +687,8 @@ class EnemyComponent extends Component {
 
         this.transform.x = this.x_start
         this.transform.y = this.y_start
+        this.transform.sx = this.player.width
+        this.transform.sy = this.player.height
 
         // Gravity and Friction variables
         this.gravity = 0.6
@@ -705,16 +813,16 @@ class EnemyComponent extends Component {
             }
         } else this.player.nearPlayer = false
     }
-    draw(ctx) {
-        if (!this.walking) ctx.fillStyle = '#9e34eb'
-        else if (this.walking) ctx.fillStyle = '#d6d64b'
-        ctx.fillRect(
-            this.transform.x,
-            this.transform.y,
-            this.player.width,
-            this.player.height
-        )
-    }
+    // draw(ctx) {
+    //     if (!this.walking) ctx.fillStyle = '#9e34eb'
+    //     else if (this.walking) ctx.fillStyle = '#d6d64b'
+    //     ctx.fillRect(
+    //         this.transform.x,
+    //         this.transform.y,
+    //         this.player.width,
+    //         this.player.height
+    //     )
+    // }
 }
 
 class EnemyGameObject extends GameObject {
@@ -726,14 +834,17 @@ class EnemyGameObject extends GameObject {
             this.walking = false
             this.x_start = 195
             this.y_start = 200
+            this.addComponent(new Rectangle('#9e34eb'))
         } else if (this.id == 2) {
             this.walking = true
             this.x_start = -40
             this.y_start = 60
+            this.addComponent(new Rectangle('#d6d64b'))
         } else if (this.id == 3) {
             this.walking = true
             this.x_start = 900
             this.y_start = 0
+            this.addComponent(new Rectangle('#d6d64b'))
         }
     }
     start() {
@@ -780,6 +891,8 @@ class EnemySwordComponent extends Component {
         this.found = false
     }
     update() {
+        this.transform.sx = this.sword.lerpx
+        this.transform.sy = this.sword.lerpy
         // If the enemy is alive
         this.found = false
         let enemies = GameObject.getObjectsByName('EnemyGameObject')
@@ -980,14 +1093,14 @@ class EnemySwordComponent extends Component {
             }
         }
     }
-    draw(ctx) {
-        ctx.strokeStyle = 'black'
-        ctx.lineWidth = 3
-        ctx.beginPath()
-        ctx.moveTo(this.transform.x, this.transform.y)
-        ctx.lineTo(this.sword.lerpx, this.sword.lerpy)
-        ctx.stroke()
-    }
+    // draw(ctx) {
+    //     ctx.strokeStyle = 'black'
+    //     ctx.lineWidth = 3
+    //     ctx.beginPath()
+    //     ctx.moveTo(this.transform.x, this.transform.y)
+    //     ctx.lineTo(this.sword.lerpx, this.sword.lerpy)
+    //     ctx.stroke()
+    // }
 }
 
 class EnemySwordGameObject extends GameObject {
@@ -1280,9 +1393,9 @@ class MainScene extends Scene {
             new GameObject('BenchGameObject').addComponent(new BenchComponent())
         ).layer = -5
         this.addGameObject(
-            new GameObject('PlayerGameObject').addComponent(
-                new PlayerComponent()
-            )
+            new GameObject('PlayerGameObject')
+                .addComponent(new PlayerComponent())
+                .addComponent(new Rectangle('red'))
         ).layer = 0
         this.addGameObject(new EnemyGameObject(1)).layer = -1
         this.addGameObject(new EnemyGameObject(2)).layer = -1
@@ -1291,10 +1404,10 @@ class MainScene extends Scene {
             new GameObject('PlatformGameObject').addComponent(
                 new PlatformComponent()
             )
-        )
+        ).layer = 5
         this.addGameObject(
             new GameObject('FloorGameObject').addComponent(new FloorComponent())
-        )
+        ).layer = 5
         this.addGameObject(
             new GameObject('MainControllerObject').addComponent(
                 new MainController()
