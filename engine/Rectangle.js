@@ -17,12 +17,20 @@ class Rectangle extends Component {
     constructor(
         fillStyle = 'white',
         strokeStyle = 'transparent',
-        lineWidth = 1
+        lineWidth = 1,
+        startX,
+        startY,
+        endX,
+        endY
     ) {
         super()
         this.fillStyle = fillStyle
         this.strokeStyle = strokeStyle
         this.lineWidth = lineWidth
+        this.startX = startX
+        this.startY = startY
+        this.endX = endX
+        this.endY = endY
     }
 
     /**
@@ -35,14 +43,21 @@ class Rectangle extends Component {
         ctx.strokeStyle = this.strokeStyle
         ctx.lineWidth = this.lineWidth
 
+        let startX
+        let startY
+
+        let endX
+        let endY
+
+        this.startX ? (startX = this.startX) : (startX = this.transform.x)
+        this.startY ? (startY = this.startY) : (startY = this.transform.y)
+
+        this.endX ? (endX = this.endX) : (endX = this.transform.sx)
+        this.endY ? (endY = this.endY) : (endY = this.transform.sy)
+
         // Draw the rectangle
         ctx.beginPath()
-        ctx.rect(
-            this.transform.x,
-            this.transform.y,
-            this.transform.sx,
-            this.transform.sy
-        )
+        ctx.rect(startX, startY, endX, endY)
         ctx.fill()
         ctx.stroke()
     }
