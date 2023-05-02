@@ -1281,6 +1281,10 @@ class PlatformComponent extends Component {
             passable: true,
         })
 
+        this.parent.addComponent(
+            new Rectangle('#4250ed', 'transparent', 1, 150, 180, 110, 15)
+        )
+
         this.platforms.push({
             x: 150,
             y: 280,
@@ -1288,6 +1292,10 @@ class PlatformComponent extends Component {
             height: 15,
             passable: true,
         })
+
+        this.parent.addComponent(
+            new Rectangle('#4250ed', 'transparent', 1, 150, 280, 110, 15)
+        )
 
         this.platforms.push({
             x: 150,
@@ -1297,6 +1305,10 @@ class PlatformComponent extends Component {
             passable: true,
         })
 
+        this.parent.addComponent(
+            new Rectangle('#4250ed', 'transparent', 1, 150, 380, 110, 15)
+        )
+
         this.platforms.push({
             x: -50,
             y: 100,
@@ -1304,6 +1316,10 @@ class PlatformComponent extends Component {
             height: 15,
             passable: true,
         })
+
+        this.parent.addComponent(
+            new Rectangle('#4250ed', 'transparent', 1, -50, 100, 310, 15)
+        )
 
         // =======================================================
         // Lower Area Platforms
@@ -1316,20 +1332,6 @@ class PlatformComponent extends Component {
         //     height: 15,
         //     passable: true,
         // })
-    }
-    draw(ctx) {
-        // Create platforms
-
-        // Render platforms
-        ctx.fillStyle = '#4250ed'
-        for (let i = 0; i < this.platforms.length; i++) {
-            ctx.fillRect(
-                this.platforms[i].x,
-                this.platforms[i].y,
-                this.platforms[i].width,
-                this.platforms[i].height
-            )
-        }
     }
 }
 
@@ -1687,9 +1689,6 @@ class EndScene extends Scene {
     }
     start() {
         this.addGameObject(new GameObject().addComponent(new EndController()))
-        // this.addGameObject(
-        //     new GameObject().addComponent(new EndDrawComponent())
-        // )
         this.addGameObject(
             new GameObject('DeathGameObject').addComponent(
                 new Text('You Died! Press Enter to Respawn.', 'red')
