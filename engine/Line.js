@@ -26,16 +26,6 @@ class Line extends Component {
         ctx.strokeStyle = this.strokeStyle
         ctx.lineWidth = this.lineWidth
 
-        // let startX =
-        //     -Math.cos(this.transform.r) * this.transform.sx + this.transform.x
-        // let startY =
-        //     -Math.sin(this.transform.r) * this.transform.sx + this.transform.y
-
-        // let endX =
-        //     Math.cos(this.transform.r) * this.transform.sx + this.transform.x
-        // let endY =
-        //     Math.sin(this.transform.r) * this.transform.sx + this.transform.y
-
         let startX = this.transform.x
         let startY = this.transform.y
 

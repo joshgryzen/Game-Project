@@ -38,8 +38,8 @@ class Rectangle extends Component {
         // Draw the rectangle
         ctx.beginPath()
         ctx.rect(
-            -this.transform.sx / 2 + this.transform.x,
-            -this.transform.sy / 2 + this.transform.y,
+            this.transform.x,
+            this.transform.y,
             this.transform.sx,
             this.transform.sy
         )

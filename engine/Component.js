@@ -63,7 +63,7 @@ class Component {
     //transform is read-only
 
     static lerp = (start, end, amount) => (1 - amount) * start + amount * end
-    static dist = (obj) => obj.transform.x - this.transform.x
+    // static dist_x = (comp1, comp2) => comp1.transform.x - comp2.transform.x
 }
 
 window.Component = Component
