@@ -425,15 +425,6 @@ class PlayerComponent extends Component {
             }
         } else this.parent.layer = -1
     }
-    // draw(ctx) {
-    //     ctx.fillStyle = '#de0d3a'
-    //     ctx.fillRect(
-    //         this.transform.x,
-    //         this.transform.y,
-    //         this.player.width,
-    //         this.player.height
-    //     )
-    // }
 }
 
 class SwordComponent extends Component {
@@ -608,16 +599,6 @@ class SwordComponent extends Component {
                 playerComponent.transform.y + this.sword.height / 2
         }
     }
-    // draw(ctx) {
-    //     if (!this.sword.sitting) {
-    //         ctx.strokeStyle = 'black'
-    //         ctx.lineWidth = 3
-    //         ctx.beginPath()
-    //         ctx.moveTo(this.transform.x, this.transform.y)
-    //         ctx.lineTo(this.sword.lerpx, this.sword.lerpy)
-    //         ctx.stroke()
-    //     }
-    // }
 }
 
 class SwordGameObject extends GameObject {
@@ -644,8 +625,12 @@ class ShieldComponent extends Component {
         this.maxTime = 2
         this.freezeTime = 1
         this.maxFreezeTime = 1
+        this.parent.addComponent(new Rectangle('black'))
     }
     update() {
+        this.transform.sx = this.shield.width
+        this.transform.sy = -this.shield.height
+
         let playerGameObject = GameObject.getObjectByName('PlayerGameObject')
         let playerComponent = playerGameObject.getComponent('PlayerComponent')
         let swordGameObject = GameObject.getObjectByName('SwordGameObject')
@@ -751,31 +736,6 @@ class ShieldComponent extends Component {
                 playerComponent.transform.y +
                 playerComponent.player.height / 1.2
         }
-    }
-    draw(ctx) {
-        ctx.fillStyle = 'black'
-        ctx.fillRect(
-            this.transform.x,
-            this.transform.y - 5,
-            this.shield.width,
-            -(this.shield.height - 5)
-        )
-        ctx.strokeStyle = 'black'
-        ctx.beginPath()
-        ctx.moveTo(this.transform.x + 1, this.transform.y - 7)
-        ctx.lineTo(
-            this.transform.x + this.shield.width / 2,
-            this.transform.y - 2
-        )
-        ctx.lineTo(
-            this.transform.x + this.shield.width / 2,
-            this.transform.y - 2
-        )
-        ctx.lineTo(
-            this.transform.x + this.shield.width - 1,
-            this.transform.y - 7
-        )
-        ctx.stroke()
     }
 }
 
@@ -952,16 +912,6 @@ class EnemyComponent extends Component {
             }
         } else this.player.nearPlayer = false
     }
-    // draw(ctx) {
-    //     if (!this.walking) ctx.fillStyle = '#9e34eb'
-    //     else if (this.walking) ctx.fillStyle = '#d6d64b'
-    //     ctx.fillRect(
-    //         this.transform.x,
-    //         this.transform.y,
-    //         this.player.width,
-    //         this.player.height
-    //     )
-    // }
 }
 
 class EnemyGameObject extends GameObject {
@@ -1301,14 +1251,6 @@ class EnemySwordComponent extends Component {
             }
         }
     }
-    // draw(ctx) {
-    //     ctx.strokeStyle = 'black'
-    //     ctx.lineWidth = 3
-    //     ctx.beginPath()
-    //     ctx.moveTo(this.transform.x, this.transform.y)
-    //     ctx.lineTo(this.sword.lerpx, this.sword.lerpy)
-    //     ctx.stroke()
-    // }
 }
 
 class EnemySwordGameObject extends GameObject {
@@ -1393,56 +1335,43 @@ class PlatformComponent extends Component {
 
 class FloorComponent extends Component {
     name = 'FloorComponent'
+    constructor(x, y, width, height) {
+        super()
+        this.x = x
+        this.y = y
+        this.width = width
+        this.height = height
+    }
     start() {
         this.floor = {
-            x: 0,
-            y: 500,
-            width: 1000,
-            height: 15,
+            x: this.x,
+            y: this.y,
+            width: this.width,
+            height: this.height,
             passable: false,
         }
-    }
-    draw(ctx) {
-        ctx.fillStyle = '#19183d'
-        ctx.fillRect(
-            this.floor.x,
-            this.floor.y,
-            this.floor.width,
-            this.floor.height
-        )
+        this.transform.x = this.floor.x
+        this.transform.y = this.floor.y
+        this.transform.sx = this.floor.width
+        this.transform.sy = this.floor.height
     }
 }
 
-// class PlayerComponentTest extends Component {
-//     name = 'PlayerComponentTest'
-//     speed = 20
-//     start() {
-//         // Player obj
-//         this.player = {
-//             x_v: 0,
-//             y_v: 0,
-//             canJump: false,
-//             jumpDown: false,
-//             height: 20,
-//             width: 20,
-//         }
-
-//         // Gravity and Friction variables
-//         this.gravity = 0.6
-//         this.friction = 0.7
-
-//         // Pass through plats
-//         this.markForPass = false
-//     }
-//     update() {
-//         if (keysDown['ArrowRight']) {
-//             this.transform.x += this.speed * Time.deltaTime
-//         }
-//         if (keysDown['ArrowLeft']) {
-//             this.transform.x -= this.speed * Time.deltaTime
-//         }
-//     }
-// }
+class FloorGameObject extends GameObject {
+    name = 'FloorGameObject'
+    constructor(x, y, width, height) {
+        super()
+        this.x = x
+        this.y = y
+        this.width = width
+        this.height = height
+    }
+    start() {
+        this.addComponent(
+            new FloorComponent(this.x, this.y, this.width, this.height)
+        ).addComponent(new Rectangle('#19183d'))
+    }
+}
 
 class BenchComponent extends Component {
     name = 'BenchComponent'
@@ -1717,9 +1646,7 @@ class MainScene extends Scene {
                 new PlatformComponent()
             )
         ).layer = 5
-        this.addGameObject(
-            new GameObject('FloorGameObject').addComponent(new FloorComponent())
-        ).layer = 5
+        this.addGameObject(new FloorGameObject(0, 500, 1000, 15)).layer = 5
         this.addGameObject(
             new GameObject('MainControllerObject').addComponent(
                 new MainController()
@@ -1748,15 +1675,6 @@ class EndController extends Component {
         }
     }
 }
-
-// class EndDrawComponent extends Component {
-//     draw(ctx) {
-//         ctx.fillStyle = 'black'
-//         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height)
-//         ctx.fillStyle = 'red'
-//         ctx.fillText('You died', 100, 100)
-//     }
-// }
 
 class EndCameraComponent extends Component {
     start() {}
