@@ -11,10 +11,21 @@ class Line extends Component {
     /** The width of the stroke */
     lineWidth
 
-    constructor(strokeStyle = 'transparent', lineWidth = 1) {
+    constructor(
+        strokeStyle = 'transparent',
+        lineWidth = 1,
+        startX,
+        startY,
+        endX,
+        endY
+    ) {
         super()
         this.strokeStyle = strokeStyle
         this.lineWidth = lineWidth
+        this.startX = startX
+        this.startY = startY
+        this.endX = endX
+        this.endY = endY
     }
 
     /**
@@ -26,11 +37,17 @@ class Line extends Component {
         ctx.strokeStyle = this.strokeStyle
         ctx.lineWidth = this.lineWidth
 
-        let startX = this.transform.x
-        let startY = this.transform.y
+        let startX
+        let startY
 
-        let endX = this.transform.sx
-        let endY = this.transform.sy
+        let endX
+        let endY
+
+        this.startX ? (startX = this.startX) : (startX = this.transform.x)
+        this.startY ? (startY = this.startY) : (startY = this.transform.y)
+
+        this.endX ? (endX = this.endX) : (endX = this.transform.sx)
+        this.endY ? (endY = this.endY) : (endY = this.transform.sy)
 
         // Draw the line
         ctx.beginPath()

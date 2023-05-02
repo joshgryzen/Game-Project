@@ -295,42 +295,133 @@ class PlayerComponent extends Component {
             // }
 
             // Check for collisions with the enemy sword
+            // Get the shield to check if we are blocking
+            let shieldGameObject =
+                GameObject.getObjectByName('ShieldGameObject')
+            let shieldComponent =
+                shieldGameObject.getComponent('ShieldComponent')
+
             let swordGameObjects = GameObject.getObjectsByName(
                 'EnemySwordGameObject'
             )
+
+            let in_range = false
+            let blocked = false
+
             for (let swordGameObject of swordGameObjects) {
-                let swordComponent = swordGameObject.getComponent(
-                    'EnemySwordComponent'
-                )
+                if (!in_range && !blocked) {
+                    let swordComponent = swordGameObject.getComponent(
+                        'EnemySwordComponent'
+                    )
 
-                // Get coordinates of sword
-                let x_start = swordComponent.transform.x
-                let y_start = swordComponent.transform.y
-                let x_end = swordComponent.sword.lerpx
-                let y_end = swordComponent.sword.lerpy
+                    // Get coordinates of sword
+                    let x_start = swordComponent.transform.x
+                    let y_start = swordComponent.transform.y
+                    let x_end = swordComponent.sword.lerpx
+                    let y_end = swordComponent.sword.lerpy
 
-                // First check if the sword is swinging
-                if (swordComponent.sword.isSwinging) {
-                    // Check if the enemy is within the x-range of the sword
+                    // First check if the sword is swinging
                     if (
-                        (x_start >= this.transform.x &&
-                            x_end <= this.transform.x + this.player.width) ||
-                        (x_start <= this.transform.x &&
-                            x_end >= this.transform.x)
+                        swordComponent.sword.isSwinging &&
+                        !swordComponent.sword.blocked
                     ) {
-                        // Check if the enemy is within the y-range of the sword
+                        // Check if the player is within the x-range of the sword
                         if (
-                            (y_start >= this.transform.y &&
-                                y_end <=
-                                    this.transform.y + this.player.height) ||
-                            (y_start <= this.transform.y &&
-                                y_end >= this.transform.y + this.player.height)
+                            (x_start >= this.transform.x &&
+                                x_end <=
+                                    this.transform.x + this.player.width) ||
+                            (x_start <= this.transform.x &&
+                                x_end >= this.transform.x)
                         ) {
-                            this.parent.destroy()
-                            SceneManager.changeScene(2)
+                            // Check if the player is within the y-range of the sword
+                            if (
+                                (y_start >= this.transform.y &&
+                                    y_end <=
+                                        this.transform.y +
+                                            this.player.height) ||
+                                (y_start <= this.transform.y &&
+                                    y_end >=
+                                        this.transform.y + this.player.height)
+                            ) {
+                                in_range = true
+
+                                // Check if we are blocking
+                                if (shieldComponent.shield.isBlocking) {
+                                    // Check if the shield is within the x-range of the sword
+                                    if (
+                                        (x_start >=
+                                            shieldComponent.transform.x &&
+                                            x_end <=
+                                                shieldComponent.transform.x +
+                                                    shieldComponent.shield
+                                                        .width) ||
+                                        (x_start <=
+                                            shieldComponent.transform.x &&
+                                            x_end >=
+                                                shieldComponent.transform.x)
+                                    ) {
+                                        // Check if the shield is within the y-range of the sword
+                                        if (
+                                            (y_start >=
+                                                shieldComponent.transform.y &&
+                                                y_end <=
+                                                    shieldComponent.transform
+                                                        .y +
+                                                        shieldComponent.shield
+                                                            .height) ||
+                                            (y_start <=
+                                                shieldComponent.transform.y &&
+                                                y_end >=
+                                                    shieldComponent.transform
+                                                        .y +
+                                                        shieldComponent.shield
+                                                            .height)
+                                        ) {
+                                            console.log('blocked!')
+                                            swordComponent.sword.blocked = true
+                                            blocked = true
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // If we are not in range of the sword check if we are blocking
+                        if (shieldComponent.shield.isBlocking) {
+                            // Check if the shield is within the x-range of the sword
+                            if (
+                                (x_start >= shieldComponent.transform.x &&
+                                    x_end <=
+                                        shieldComponent.transform.x +
+                                            shieldComponent.shield.width) ||
+                                (x_start <= shieldComponent.transform.x &&
+                                    x_end >= shieldComponent.transform.x)
+                            ) {
+                                // Check if the shield is within the y-range of the sword
+                                if (
+                                    (y_start >= shieldComponent.transform.y &&
+                                        y_end <=
+                                            shieldComponent.transform.y +
+                                                shieldComponent.shield
+                                                    .height) ||
+                                    (y_start <= shieldComponent.transform.y &&
+                                        y_end >=
+                                            shieldComponent.transform.y +
+                                                shieldComponent.shield.height)
+                                ) {
+                                    console.log('blocked from a distance!')
+                                    swordComponent.sword.blocked = true
+                                    blocked = true
+                                }
+                            }
                         }
                     }
                 }
+            }
+            console.log(`in range: ${in_range}, blocked: ${blocked}`)
+            if (in_range && !blocked) {
+                this.parent.destroy()
+                SceneManager.changeScene(2)
             }
         } else this.parent.layer = -1
     }
@@ -351,6 +442,7 @@ class SwordComponent extends Component {
         this.sword = {
             canSwing: true,
             isSwinging: false,
+            windUp: false,
             height: 40,
             width: 4,
             lerpx: 0,
@@ -359,6 +451,8 @@ class SwordComponent extends Component {
         }
         this.swingTime = 0
         this.maxTime = 1
+        this.windUpTime = 0
+        this.maxWindUpTime = 0.5
         this.freezeTime = 0
         this.maxFreezeTime = 1
     }
@@ -394,52 +488,86 @@ class SwordComponent extends Component {
             // 2. If currently swinging, progress swinging animation
             // 3. When swing doine set back to original pos
 
-            // if player is facing to the right
-            if (playerComponent.player.x_v >= 0) {
-                if (this.sword.isSwinging) {
-                    this.swingTime += 60 / 1000
+            // first pull back on the sword to telegraph a swing
+            if (
+                this.sword.windUp &&
+                this.swingTime == 0 &&
+                this.windUpTime <= this.maxWindUpTime
+            ) {
+                // facing to the right
+                if (playerComponent.player.x_v >= 0) {
+                    this.windUpTime += 20 / 1000
                     this.sword.lerpx = SwordComponent.lerp(
                         this.sword.lerpx,
-                        this.transform.x + this.sword.height,
-                        this.swingTime / this.maxTime
+                        this.transform.x - this.sword.height / 3,
+                        this.windUpTime / this.maxTime
                     )
-                    this.sword.lerpy = SwordComponent.lerp(
-                        this.sword.lerpy,
-                        playerComponent.transform.y +
-                            playerComponent.player.height / 1.5,
-                        this.swingTime / this.maxTime
-                    )
-                } else {
-                    this.sword.lerpx = SwordComponent.lerp(
-                        this.sword.lerpx,
-                        this.transform.x,
-                        300 / 1000
-                    )
-                    this.sword.lerpy = this.transform.y - this.sword.height
                 }
-            }
-            // if player is facing to the left
-            else {
-                if (this.sword.isSwinging) {
-                    this.swingTime += 60 / 1000
+                // facing to the left
+                else {
+                    this.windUpTime += 20 / 1000
                     this.sword.lerpx = SwordComponent.lerp(
                         this.sword.lerpx,
-                        this.transform.x - this.sword.height,
-                        this.swingTime / this.maxTime
+                        this.transform.x + this.sword.height / 3,
+                        this.windUpTime / this.maxTime
                     )
-                    this.sword.lerpy = SwordComponent.lerp(
-                        this.sword.lerpy,
-                        playerComponent.transform.y +
-                            playerComponent.player.height / 1.5,
-                        this.swingTime / this.maxTime
-                    )
-                } else {
-                    this.sword.lerpx = SwordComponent.lerp(
-                        this.sword.lerpx,
-                        this.transform.x,
-                        300 / 1000
-                    )
-                    this.sword.lerpy = this.transform.y - this.sword.height
+                }
+                this.sword.lerpy = this.transform.y - this.sword.height
+            } else if (
+                this.sword.windUp &&
+                this.swingTime == 0 &&
+                this.windUpTime >= this.maxWindUpTime
+            ) {
+                this.sword.isSwinging = true
+                this.sword.windUp = false
+            } else {
+                // if player is facing to the right
+                if (playerComponent.player.x_v >= 0) {
+                    if (this.sword.isSwinging) {
+                        this.swingTime += 60 / 1000
+                        this.sword.lerpx = SwordComponent.lerp(
+                            this.sword.lerpx,
+                            this.transform.x + this.sword.height,
+                            this.swingTime / this.maxTime
+                        )
+                        this.sword.lerpy = SwordComponent.lerp(
+                            this.sword.lerpy,
+                            playerComponent.transform.y +
+                                playerComponent.player.height / 1.5,
+                            this.swingTime / this.maxTime
+                        )
+                    } else {
+                        this.sword.lerpx = SwordComponent.lerp(
+                            this.sword.lerpx,
+                            this.transform.x,
+                            300 / 1000
+                        )
+                        this.sword.lerpy = this.transform.y - this.sword.height
+                    }
+                }
+                // if player is facing to the left
+                else {
+                    if (this.sword.isSwinging) {
+                        this.swingTime += 60 / 1000
+                        this.sword.lerpx = SwordComponent.lerp(
+                            this.sword.lerpx,
+                            this.transform.x - this.sword.height,
+                            this.swingTime / this.maxTime
+                        )
+                        this.sword.lerpy = SwordComponent.lerp(
+                            this.sword.lerpy,
+                            playerComponent.transform.y +
+                                playerComponent.player.height / 1.5,
+                            this.swingTime / this.maxTime
+                        )
+                    } else {
+                        this.sword.lerpx = SwordComponent.lerp(
+                            this.sword.lerpx,
+                            this.transform.x,
+                            300 / 1000
+                        )
+                        this.sword.lerpy = this.transform.y - this.sword.height
+                    }
                 }
             }
 
@@ -454,15 +582,20 @@ class SwordComponent extends Component {
                 this.freezeTime >= this.maxFreezeTime &&
                 !shieldComponent.shield.isBlocking
             ) {
+                this.freezeTime = 0
                 this.swingTime = 0
-                this.sword.isSwinging = true
+                this.windUpTime = 0
+                this.sword.windUp = true
+                // this.sword.isSwinging = true
                 this.sword.canSwing = false
             }
             if (this.sword.isSwinging && this.swingTime >= this.maxTime) {
                 this.freezeTime = 0
                 this.swingTime = 0
+                this.windUpTime = 0
                 this.sword.isSwinging = false
                 this.sword.canSwing = true
+                this.sword.windUp = false
             }
         } else {
             this.parent.layer = -2
@@ -506,11 +639,9 @@ class ShieldComponent extends Component {
             lerpy: 0,
             sitting: false,
         }
-        const originalHeight = this.shield.height
-        const originalWidth = this.shield.width
 
         this.blockTime = 0
-        this.maxTime = 3
+        this.maxTime = 2
         this.freezeTime = 1
         this.maxFreezeTime = 1
     }
@@ -542,7 +673,7 @@ class ShieldComponent extends Component {
 
             // if shield is blocking
             if (this.shield.isBlocking) {
-                this.blockTime += 60 / 1000
+                this.blockTime += 90 / 1000
                 // if the player is facing to the right
                 if (playerComponent.player.x_v >= 0) {
                     let partialTime
@@ -570,7 +701,7 @@ class ShieldComponent extends Component {
 
                 this.shield.lerpy = ShieldComponent.lerp(
                     this.shield.lerpy,
-                    this.transform.y - this.shield.height / 4,
+                    this.transform.y - this.shield.height / 2,
                     this.blockTime / this.maxTime
                 )
                 this.transform.x = this.shield.lerpx
@@ -602,10 +733,8 @@ class ShieldComponent extends Component {
                 this.blockTime = 0
                 this.shield.isBlocking = true
                 this.shield.canBlock = false
-                console.log('I am blocking')
             }
             if (this.shield.isBlocking && this.blockTime >= this.maxTime) {
-                console.log('I am no longer blocking')
                 this.freezeTime = 0
                 this.blockTime = 0
                 this.shield.isBlocking = false
@@ -683,6 +812,7 @@ class EnemyComponent extends Component {
             // 0 is facing right, 1 is facing left
             direction: 0,
             nearPlayer: false,
+            blocked: false,
         }
 
         this.transform.x = this.x_start
@@ -707,6 +837,13 @@ class EnemyComponent extends Component {
         // If the player is in the air then apply the effect of gravity
         if (!this.player.canJump && this.player.y_v <= 12)
             this.player.y_v += this.gravity
+        if (this.player.blocked && this.player.canJump) {
+            this.player.canJump = false
+            this.transform.y -= 30
+            if (this.player.direction == 0) {
+                this.transform.x -= 0.5
+            } else this.transform.x += 0.5
+        }
 
         // Updating the y and x coordinates of the player
         this.transform.y += this.player.y_v
@@ -744,8 +881,10 @@ class EnemyComponent extends Component {
         // Check for collisions with the floor
         let plat = floorComponent.floor
         if (
-            plat.y <= this.transform.y + this.player.height &&
-            this.transform.y + this.player.height <= plat.y + plat.height
+            plat.x < this.transform.x + this.player.width &&
+            this.transform.x < plat.x + plat.width &&
+            plat.y < this.transform.y + this.player.height &&
+            this.transform.y + this.player.height < plat.y + plat.height
         ) {
             this.player.canJump = true
             this.transform.y = plat.y - this.player.height
@@ -875,6 +1014,7 @@ class EnemySwordComponent extends Component {
         this.sword = {
             canSwing: true,
             isSwinging: false,
+            windUp: false,
             height: 40,
             width: 4,
             lerpx: 0,
@@ -882,9 +1022,14 @@ class EnemySwordComponent extends Component {
             y_v: 0,
             x_v: 0,
             stuck: false,
+            blocked: false,
         }
         this.swingTime = 0
         this.maxTime = 1
+        this.windUpTime = 0
+        this.maxWindUpTime = 0.5
+        this.blockedTime = 0
+        this.maxBlockedTime = 2
         this.gravity = 0.3
         this.freezeTime = 0
         this.maxFreezeTime = 2
@@ -902,7 +1047,7 @@ class EnemySwordComponent extends Component {
             if (enemyComponent.id == this.id) {
                 this.found = true
                 let playerComponent = enemyComponent
-                // console.log(playerComponent)
+                playerComponent.player.blocked = this.sword.blocked
                 // Change sides based off where the player is
                 // Don't let it change while swinging
                 if (!this.isSwinging) {
@@ -928,58 +1073,116 @@ class EnemySwordComponent extends Component {
                 // 2. If currently swinging, progress swinging animation
                 // 3. When swing doine set back to original pos
 
-                // if player is facing to the right
-                if (playerComponent.player.direction == 0) {
-                    if (this.sword.isSwinging) {
-                        this.swingTime += 60 / 1000
+                // Check if the player blocked
+                if (
+                    this.sword.blocked &&
+                    this.blockedTime <= this.maxBlockedTime
+                ) {
+                    this.sword.isSwinging = false
+                    this.sword.canSwing = false
+                    this.blockedTime += Time.deltaTime
+                } else if (
+                    this.sword.blocked &&
+                    this.blockedTime >= this.maxBlockedTime
+                ) {
+                    this.sword.canSwing = true
+                    this.sword.blocked = false
+                }
+
+                // first pull back on the sword to telegraph a swing
+                if (
+                    this.sword.windUp &&
+                    this.swingTime == 0 &&
+                    this.windUpTime <= this.maxWindUpTime
+                ) {
+                    // facing to the right
+                    if (playerComponent.player.direction == 0) {
+                        this.windUpTime += 20 / 1000
                         this.sword.lerpx = SwordComponent.lerp(
                             this.sword.lerpx,
-                            this.transform.x + this.sword.height,
-                            this.swingTime / this.maxTime
-                        )
-                        this.sword.lerpy = SwordComponent.lerp(
-                            this.sword.lerpy,
-                            playerComponent.transform.y +
-                                playerComponent.player.height / 1.5,
-                            this.swingTime / this.maxTime
+                            this.transform.x - this.sword.height / 3,
+                            this.windUpTime / this.maxTime
                         )
                     }
-                    // if the player is not swinging
+                    // facing to the left
                     else {
+                        this.windUpTime += 20 / 1000
                         this.sword.lerpx = SwordComponent.lerp(
                             this.sword.lerpx,
-                            this.transform.x,
-                            300 / 1000
+                            this.transform.x + this.sword.height / 3,
+                            this.windUpTime / this.maxTime
                         )
-                        this.sword.lerpy = this.transform.y - this.sword.height
+                    }
+                    this.sword.lerpy = SwordComponent.lerp(
+                        this.sword.lerpy,
+                        this.transform.y - this.sword.height,
+                        this.windUpTime / 3 / this.maxTime
+                    )
+                } else if (
+                    this.sword.windUp &&
+                    this.swingTime == 0 &&
+                    this.windUpTime >= this.maxWindUpTime
+                ) {
+                    this.sword.windUp = false
+                    this.sword.isSwinging = true
+                } else {
+                    // Actual swing
+                    if (playerComponent.player.direction == 0) {
+                        // if player is facing to the right
+                        if (this.sword.isSwinging) {
+                            this.swingTime += 20 / 1000
+                            this.sword.lerpx = SwordComponent.lerp(
+                                this.sword.lerpx,
+                                this.transform.x + this.sword.height,
+                                this.swingTime / this.maxTime
+                            )
+                            this.sword.lerpy = SwordComponent.lerp(
+                                this.sword.lerpy,
+                                playerComponent.transform.y +
+                                    playerComponent.player.height / 1.5,
+                                this.swingTime / 3 / this.maxTime
+                            )
+                        }
+                        // if the player is not swinging
+                        else {
+                            this.sword.lerpx = SwordComponent.lerp(
+                                this.sword.lerpx,
+                                this.transform.x,
+                                300 / 1000
+                            )
+                            this.sword.lerpy =
+                                this.transform.y - this.sword.height
+                        }
+                    }
+                    // if player is facing to the left
+                    else {
+                        if (this.sword.isSwinging) {
+                            this.swingTime += 20 / 1000
+                            this.sword.lerpx = SwordComponent.lerp(
+                                this.sword.lerpx,
+                                this.transform.x - this.sword.height,
+                                this.swingTime / this.maxTime
+                            )
+                            this.sword.lerpy = SwordComponent.lerp(
+                                this.sword.lerpy,
+                                playerComponent.transform.y +
+                                    playerComponent.player.height / 1.5,
+                                this.swingTime / 3 / this.maxTime
+                            )
+                        }
+                        // If the player is not swinging
+                        else {
+                            this.sword.lerpx = SwordComponent.lerp(
+                                this.sword.lerpx,
+                                this.transform.x,
+                                300 / 1000
+                            )
+                            this.sword.lerpy =
+                                this.transform.y - this.sword.height
+                        }
                     }
                 }
-                // if player is facing to the left
-                else {
-                    if (this.sword.isSwinging) {
-                        this.swingTime += 60 / 1000
-                        this.sword.lerpx = SwordComponent.lerp(
-                            this.sword.lerpx,
-                            this.transform.x - this.sword.height,
-                            this.swingTime / this.maxTime
-                        )
-                        this.sword.lerpy = SwordComponent.lerp(
-                            this.sword.lerpy,
-                            playerComponent.transform.y +
-                                playerComponent.player.height / 1.5,
-                            this.swingTime / this.maxTime
-                        )
-                    }
-                    // If the player is not swinging
-                    else {
-                        this.sword.lerpx = SwordComponent.lerp(
-                            this.sword.lerpx,
-                            this.transform.x,
-                            300 / 1000
-                        )
-                        this.sword.lerpy = this.transform.y - this.sword.height
-                    }
-                }
+
                 let prob = Math.random()
                 this.freezeTime += Time.deltaTime
                 if (playerComponent.player.nearPlayer) {
@@ -991,14 +1194,19 @@ class EnemySwordComponent extends Component {
                     ) {
                         this.freezeTime = 0
                         this.swingTime = 0
-                        this.sword.isSwinging = true
+                        this.windUpTime = 0
+                        this.blockedTime = 0
+                        this.sword.windUp = true
                         this.sword.canSwing = false
                     }
                 }
                 if (this.sword.isSwinging && this.swingTime >= this.maxTime) {
                     this.swingTime = 0
+                    this.windUpTime = 0
+                    this.blockedTime = 0
                     this.sword.isSwinging = false
                     this.sword.canSwing = true
+                    this.sword.windUp = false
                 }
                 break
             }
@@ -1250,6 +1458,194 @@ class BenchComponent extends Component {
         this.sit_y
         this.freezeTime = 0
         this.maxFreezeTime = 0.5
+
+        // Front left leg
+        this.parent.addComponent(
+            new Line(
+                '#7d7db3',
+                3,
+                this.bench.x,
+                this.bench.y,
+                this.bench.x,
+                this.bench.y - this.bench.height
+            )
+        )
+
+        // Back left leg
+        this.parent.addComponent(
+            new Line(
+                '#7d7db3',
+                3,
+                this.bench.x - 10,
+                this.bench.y,
+                this.bench.x - 10,
+                this.bench.y - this.bench.height * 3.3
+            )
+        )
+
+        // Front right leg
+        this.parent.addComponent(
+            new Line(
+                '#7d7db3',
+                3,
+                this.bench.x + 70,
+                this.bench.y,
+                this.bench.x + 70,
+                this.bench.y - this.bench.height
+            )
+        )
+
+        // Back right leg
+        this.parent.addComponent(
+            new Line(
+                '#7d7db3',
+                3,
+                this.bench.x + 60,
+                this.bench.y,
+                this.bench.x + 60,
+                this.bench.y - this.bench.height * 3.3
+            )
+        )
+
+        // Right edge
+        this.parent.addComponent(
+            new Line(
+                '#7d7db3',
+                2,
+                this.bench.x + 60,
+                this.bench.y - this.bench.height * 1.2,
+                this.bench.x + 70,
+                this.bench.y - this.bench.height
+            )
+        )
+
+        // Left edge
+        this.parent.addComponent(
+            new Line(
+                '#7d7db3',
+                2,
+                this.bench.x - 10,
+                this.bench.y - this.bench.height * 1.2,
+                this.bench.x,
+                this.bench.y - this.bench.height
+            )
+        )
+
+        // Seat
+        this.parent.addComponent(
+            new Line(
+                '#7d7db3',
+                2,
+                this.bench.x - 10,
+                this.bench.y - this.bench.height * 1.2,
+                this.bench.x + 60,
+                this.bench.y - this.bench.height * 1.2
+            )
+        )
+        this.parent.addComponent(
+            new Line(
+                '#7d7db3',
+                2,
+                this.bench.x,
+                this.bench.y - this.bench.height,
+                this.bench.x + 70,
+                this.bench.y - this.bench.height
+            )
+        )
+
+        // Top
+        this.parent.addComponent(
+            new Line(
+                '#7d7db3',
+                3,
+                this.bench.x - 10,
+                this.bench.y - this.bench.height * 3.3,
+                this.bench.x + 60,
+                this.bench.y - this.bench.height * 3.3
+            )
+        )
+
+        // Back designs
+        this.parent.addComponent(
+            new Line(
+                '#7d7db3',
+                2,
+                this.bench.x - 10,
+                this.bench.y - this.bench.height - 10,
+                this.bench.x,
+                this.bench.y - this.bench.height * 1.2
+            )
+        )
+        this.parent.addComponent(
+            new Line(
+                '#7d7db3',
+                2,
+                this.bench.x - 10,
+                this.bench.y - this.bench.height - 20,
+                this.bench.x + 10,
+                this.bench.y - this.bench.height * 1.2
+            )
+        )
+        this.parent.addComponent(
+            new Line(
+                '#7d7db3',
+                2,
+                this.bench.x - 10,
+                this.bench.y - this.bench.height * 3.3,
+                this.bench.x + 20,
+                this.bench.y - this.bench.height * 1.2
+            )
+        )
+        this.parent.addComponent(
+            new Line(
+                '#7d7db3',
+                2,
+                this.bench.x,
+                this.bench.y - this.bench.height * 3.3,
+                this.bench.x + 30,
+                this.bench.y - this.bench.height * 1.2
+            )
+        )
+        this.parent.addComponent(
+            new Line(
+                '#7d7db3',
+                2,
+                this.bench.x + 60,
+                this.bench.y - this.bench.height - 10,
+                this.bench.x + 50,
+                this.bench.y - this.bench.height * 1.2
+            )
+        )
+        this.parent.addComponent(
+            new Line(
+                '#7d7db3',
+                2,
+                this.bench.x + 60,
+                this.bench.y - this.bench.height - 20,
+                this.bench.x + 40,
+                this.bench.y - this.bench.height * 1.2
+            )
+        )
+        this.parent.addComponent(
+            new Line(
+                '#7d7db3',
+                2,
+                this.bench.x + 60,
+                this.bench.y - this.bench.height * 3.3,
+                this.bench.x + 30,
+                this.bench.y - this.bench.height * 1.2
+            )
+        )
+        this.parent.addComponent(
+            new Line(
+                '#7d7db3',
+                2,
+                this.bench.x + 50,
+                this.bench.y - this.bench.height * 3.3,
+                this.bench.x + 20,
+                this.bench.y - this.bench.height * 1.2
+            )
+        )
     }
     update() {
         this.freezeTime += Time.deltaTime
@@ -1297,90 +1693,6 @@ class BenchComponent extends Component {
                 }
             }
         }
-    }
-    draw(ctx) {
-        ctx.strokeStyle = '#7d7db3'
-        ctx.lineWidth = 3
-
-        // Front left leg
-        ctx.beginPath()
-        ctx.moveTo(this.bench.x, this.bench.y)
-        ctx.lineTo(this.bench.x, this.bench.y - this.bench.height)
-        ctx.stroke()
-
-        // Back left leg
-        ctx.beginPath()
-        ctx.moveTo(this.bench.x - 10, this.bench.y)
-        ctx.lineTo(this.bench.x - 10, this.bench.y - this.bench.height * 3.3)
-        ctx.stroke()
-
-        // Front right leg
-        ctx.beginPath()
-        ctx.moveTo(this.bench.x + 70, this.bench.y)
-        ctx.lineTo(this.bench.x + 70, this.bench.y - this.bench.height)
-        ctx.stroke()
-
-        // Back right leg
-        ctx.beginPath()
-        ctx.moveTo(this.bench.x + 60, this.bench.y)
-        ctx.lineTo(this.bench.x + 60, this.bench.y - this.bench.height * 3.3)
-        ctx.stroke()
-
-        // Right edge
-        ctx.lineWidth = 2
-        ctx.beginPath()
-        ctx.moveTo(this.bench.x + 60, this.bench.y - this.bench.height * 1.2)
-        ctx.lineTo(this.bench.x + 70, this.bench.y - this.bench.height)
-        ctx.stroke()
-
-        // Left edge
-        ctx.beginPath()
-        ctx.moveTo(this.bench.x - 10, this.bench.y - this.bench.height * 1.2)
-        ctx.lineTo(this.bench.x, this.bench.y - this.bench.height)
-        ctx.stroke()
-
-        // Seat
-        ctx.beginPath()
-        ctx.moveTo(this.bench.x - 10, this.bench.y - this.bench.height * 1.2)
-        ctx.lineTo(this.bench.x + 60, this.bench.y - this.bench.height * 1.2)
-        ctx.moveTo(this.bench.x, this.bench.y - this.bench.height)
-        ctx.lineTo(this.bench.x + 70, this.bench.y - this.bench.height)
-        ctx.stroke()
-
-        // Top
-        ctx.lineWidth = 3
-        ctx.beginPath()
-        ctx.moveTo(this.bench.x - 10, this.bench.y - this.bench.height * 3.3)
-        ctx.lineTo(this.bench.x + 60, this.bench.y - this.bench.height * 3.3)
-        ctx.stroke()
-
-        // Back designs
-        ctx.lineWidth = 2
-        ctx.beginPath()
-        ctx.moveTo(this.bench.x - 10, this.bench.y - this.bench.height - 10)
-        ctx.lineTo(this.bench.x, this.bench.y - this.bench.height * 1.2)
-
-        ctx.moveTo(this.bench.x - 10, this.bench.y - this.bench.height - 20)
-        ctx.lineTo(this.bench.x + 10, this.bench.y - this.bench.height * 1.2)
-
-        ctx.moveTo(this.bench.x - 10, this.bench.y - this.bench.height * 3.3)
-        ctx.lineTo(this.bench.x + 20, this.bench.y - this.bench.height * 1.2)
-
-        ctx.moveTo(this.bench.x, this.bench.y - this.bench.height * 3.3)
-        ctx.lineTo(this.bench.x + 30, this.bench.y - this.bench.height * 1.2)
-
-        ctx.moveTo(this.bench.x + 60, this.bench.y - this.bench.height - 10)
-        ctx.lineTo(this.bench.x + 50, this.bench.y - this.bench.height * 1.2)
-
-        ctx.moveTo(this.bench.x + 60, this.bench.y - this.bench.height - 20)
-        ctx.lineTo(this.bench.x + 40, this.bench.y - this.bench.height * 1.2)
-
-        ctx.moveTo(this.bench.x + 60, this.bench.y - this.bench.height * 3.3)
-        ctx.lineTo(this.bench.x + 30, this.bench.y - this.bench.height * 1.2)
-
-        ctx.moveTo(this.bench.x + 50, this.bench.y - this.bench.height * 3.3)
-        ctx.lineTo(this.bench.x + 20, this.bench.y - this.bench.height * 1.2)
-        ctx.stroke()
     }
 }
 
