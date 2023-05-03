@@ -174,7 +174,6 @@ class PlayerComponent extends Component {
             x_v: 0,
             y_v: 0,
             canJump: false,
-            jumpDown: false,
             height: 20,
             width: 20,
             sitting: false,
@@ -210,8 +209,8 @@ class PlayerComponent extends Component {
         let platformComponent =
             platformGameObject.getComponent('PlatformComponent')
 
-        let floorGameObject = GameObject.getObjectByName('FloorGameObject')
-        let floorComponent = floorGameObject.getComponent('FloorComponent')
+        let floorGameObjects = GameObject.getObjectsByName('FloorGameObject')
+        // let floorComponent = floorGameObject.getComponent('FloorComponent')
 
         if (!this.player.sitting) {
             this.parent.layer = 0
@@ -273,26 +272,32 @@ class PlayerComponent extends Component {
                     // Move Down through Plat
                     if (!(keysDown['ArrowDown'] || keysDown['s'])) {
                         this.player.canJump = true
+                        this.player.y_v = 0
                         this.transform.y = plat.y - this.player.height
                     }
                 }
             }
 
             // Check for collisions with the floor
-            let plat = floorComponent.floor
-            if (
-                plat.y <= this.transform.y + this.player.height &&
-                this.transform.y + this.player.height <= plat.y + plat.height &&
-                this.transform.x + this.player.width >= plat.x &&
-                this.transform.x <= plat.x + plat.width
-            ) {
-                this.player.canJump = true
-                this.transform.y = plat.y - this.player.height
+            for (let floorGameObject of floorGameObjects) {
+                if (!this.player.canJump) {
+                    let plat =
+                        floorGameObject.getComponent('FloorComponent').floor
+
+                    // Check for falling
+                    if (
+                        plat.y <= this.transform.y + this.player.height &&
+                        this.transform.y + this.player.height <=
+                            plat.y + plat.height &&
+                        this.transform.x + this.player.width / 2 >= plat.x &&
+                        this.transform.x <= plat.x + plat.width
+                    ) {
+                        this.player.canJump = true
+                        this.player.y_v = 0
+                        this.transform.y = plat.y - this.player.height
+                    }
+                }
             }
-            // if (this.transform.y >= plat.y + 400) {
-            //     this.parent.destroy()
-            //     SceneManager.changeScene(2)
-            // }
 
             // Check for collisions with the enemy sword
             // Get the shield to check if we are blocking
@@ -377,7 +382,6 @@ class PlayerComponent extends Component {
                                                         shieldComponent.shield
                                                             .height)
                                         ) {
-                                            console.log('blocked!')
                                             swordComponent.sword.blocked = true
                                             blocked = true
                                         }
@@ -409,7 +413,6 @@ class PlayerComponent extends Component {
                                             shieldComponent.transform.y +
                                                 shieldComponent.shield.height)
                                 ) {
-                                    console.log('blocked from a distance!')
                                     swordComponent.sword.blocked = true
                                     blocked = true
                                 }
@@ -418,7 +421,6 @@ class PlayerComponent extends Component {
                     }
                 }
             }
-            console.log(`in range: ${in_range}, blocked: ${blocked}`)
             if (in_range && !blocked) {
                 this.parent.destroy()
                 SceneManager.changeScene(2)
@@ -863,6 +865,11 @@ class EnemyComponent extends Component {
                     } else this.player.direction = 0
                 }
             }
+        }
+
+        // if below the floor destroy it
+        if (this.transform.y >= plat.y + 400) {
+            this.parent.destroy()
         }
 
         // Get information from player component
@@ -1375,13 +1382,43 @@ class FloorGameObject extends GameObject {
     }
 }
 
+class WallComponent extends Component {
+    name = 'WallComponent'
+    constructor(x, y, width, height) {
+        super()
+        this.x = x
+        this.y = y
+        this.width = width
+        this.height = height
+    }
+    start() {
+        this.wall = {
+            x: this.x,
+            y: this.y,
+            width: this.width,
+            height: this.height,
+            passable: false,
+        }
+        this.transform.x = this.floor.x
+        this.transform.y = this.floor.y
+        this.transform.sx = this.floor.width
+        this.transform.sy = this.floor.height
+    }
+}
+
 class BenchComponent extends Component {
     name = 'BenchComponent'
+    constructor(id, x, y) {
+        super()
+        this.id = id
+        this.x = x
+        this.y = y
+    }
     start() {
         this.bench = {
-            id: 1,
-            x: 15,
-            y: 500,
+            id: this.id,
+            x: this.x,
+            y: this.y,
             height: 12,
             width: 70,
         }
@@ -1583,10 +1620,9 @@ class BenchComponent extends Component {
         let playerGameObject = GameObject.getObjectByName('PlayerGameObject')
         let player = playerGameObject.getComponent('PlayerComponent')
 
-        this.sit_x =
-            (this.bench.x + this.bench.width) / 2 - player.player.width / 2
+        this.sit_x = this.bench.x + this.bench.width / 2 - player.player.width
         this.sit_y =
-            this.bench.y - this.bench.height * 1.2 - player.player.height
+            this.bench.y - this.bench.height * 3.3 + player.player.height / 4
 
         let checkpointGameObject = GameObject.getObjectByName(
             'CheckpointGameObject'
@@ -1594,7 +1630,6 @@ class BenchComponent extends Component {
         let checkpointComponent = checkpointGameObject.getComponent(
             'CheckpointComponent'
         )
-
         if (
             player.transform.x + player.player.width >= this.bench.x &&
             player.transform.x <= this.bench.width + this.bench.x
@@ -1627,14 +1662,26 @@ class BenchComponent extends Component {
     }
 }
 
+class BenchGameObject extends GameObject {
+    name = 'BenchGameObject'
+    constructor(id, x, y) {
+        super()
+        this.id = id
+        this.x = x
+        this.y = y
+    }
+    start() {
+        this.addComponent(new BenchComponent(this.id, this.x, this.y))
+    }
+}
+
 class MainScene extends Scene {
     constructor() {
         super('teal')
     }
     start() {
-        this.addGameObject(
-            new GameObject('BenchGameObject').addComponent(new BenchComponent())
-        ).layer = -5
+        this.addGameObject(new BenchGameObject(1, 15, 500)).layer = -5
+        this.addGameObject(new BenchGameObject(2, -175, 545)).layer = -5
         this.addGameObject(
             new GameObject('PlayerGameObject')
                 .addComponent(new PlayerComponent())
@@ -1649,6 +1696,11 @@ class MainScene extends Scene {
             )
         ).layer = 5
         this.addGameObject(new FloorGameObject(0, 500, 1000, 15)).layer = 5
+        this.addGameObject(new FloorGameObject(-25, 515, 25, 15)).layer = 5
+        this.addGameObject(new FloorGameObject(-50, 530, 25, 15)).layer = 5
+        this.addGameObject(new FloorGameObject(-225, 545, 175, 15)).layer = 5
+        this.addGameObject(new FloorGameObject(-250, 530, 25, 15)).layer = 5
+        this.addGameObject(new FloorGameObject(-425, 515, 175, 15)).layer = 5
         this.addGameObject(
             new GameObject('MainControllerObject').addComponent(
                 new MainController()
