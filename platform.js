@@ -4,6 +4,7 @@ import '/engine/engine.js'
 //Start
 
 // TODO - make a death plane where the player dies when entering
+// TODO - update shield falling logic
 
 class CheckpointComponent extends Component {
     name = 'CheckpointComponent'
@@ -354,7 +355,7 @@ class MainController extends Component {
         // if (SceneManager.getActiveScene() == 0) {
         //     this.enemy_count = 1
         // } else this.enemy_count = 3
-        this.enemy_count = 3
+        this.enemy_count = 7
         GameObject.getObjectByName('CheckpointGameObject').doNotDestroyOnLoad()
     }
     update() {
@@ -1445,6 +1446,12 @@ class EnemyGameObject extends GameObject {
     constructor(id) {
         super()
         this.id = id
+
+        // For enemies that cannot move:
+        // #9e34eb
+        // For enemies that can move:
+        // #d6d64b
+
         if (this.id == 1) {
             this.walking = false
             this.x_start = 195
@@ -1466,7 +1473,37 @@ class EnemyGameObject extends GameObject {
             this.sword = true
             this.shield = false
             this.addComponent(new Rectangle('#d6d64b'))
-        } else if (this.id == -1) {
+        } else if (this.id == 4) {
+            this.walking = true
+            this.x_start = 400
+            this.y_start = 450
+            this.sword = true
+            this.shield = false
+            this.addComponent(new Rectangle('#d6d64b'))
+        } else if (this.id == 5) {
+            this.walking = false
+            this.x_start = 600
+            this.y_start = 500
+            this.sword = true
+            this.shield = true
+            this.addComponent(new Rectangle('#9e34eb'))
+        } else if (this.id == 6) {
+            this.walking = false
+            this.x_start = 740
+            this.y_start = 500
+            this.sword = true
+            this.shield = true
+            this.addComponent(new Rectangle('#9e34eb'))
+        } else if (this.id == 7) {
+            this.walking = true
+            this.x_start = 550
+            this.y_start = 300
+            this.sword = true
+            this.shield = true
+            this.addComponent(new Rectangle('#d6d64b'))
+        }
+        // first scene
+        else if (this.id == -1) {
             this.walking = false
             this.x_start = 1140
             this.y_start = -40
@@ -1712,10 +1749,8 @@ class EnemySwordComponent extends Component {
                 let platformComponent =
                     platformGameObject.getComponent('PlatformComponent')
 
-                let floorGameObject =
-                    GameObject.getObjectByName('FloorGameObject')
-                let floorComponent =
-                    floorGameObject.getComponent('FloorComponent')
+                let floorGameObjects =
+                    GameObject.getObjectsByName('FloorGameObject')
 
                 // If the sword is in the air then apply the effect of gravity
                 if (this.sword.y_v < 12) this.sword.y_v += this.gravity
@@ -1737,18 +1772,22 @@ class EnemySwordComponent extends Component {
                 }
 
                 // Check for collisions with the floor
-                let plat = floorComponent.floor
-                if (
-                    plat.x < this.transform.x + this.sword.width &&
-                    this.transform.x < plat.x + plat.width &&
-                    plat.y < this.transform.y &&
-                    this.transform.y < plat.y + plat.height
-                ) {
-                    this.transform.y = plat.y
-                    this.sword.stuck = true
-                }
-                if (this.transform.y >= plat.y + 400) {
-                    this.parent.destroy()
+                for (let floorGameObject of floorGameObjects) {
+                    let floorComponent =
+                        floorGameObject.getComponent('FloorComponent')
+                    let plat = floorComponent.floor
+                    if (
+                        plat.x < this.transform.x + this.sword.width &&
+                        this.transform.x < plat.x + plat.width &&
+                        plat.y < this.transform.y &&
+                        this.transform.y < plat.y + plat.height
+                    ) {
+                        this.transform.y = plat.y
+                        this.sword.stuck = true
+                    }
+                    if (this.transform.y >= plat.y + 1000) {
+                        this.parent.destroy()
+                    }
                 }
 
                 this.sword.lerpx = SwordComponent.lerp(
@@ -1838,6 +1877,7 @@ class EnemyShieldComponent extends Component {
 
         this.found = false
         let enemies = GameObject.getObjectsByName('EnemyGameObject')
+        // if the enemy is alive
         for (let enemy of enemies) {
             let enemyComponent = enemy.getComponent('EnemyComponent')
             // find matching id
@@ -1875,10 +1915,8 @@ class EnemyShieldComponent extends Component {
                 let platformGameObject =
                     GameObject.getObjectByName('PlatformGameObject')
 
-                let floorGameObject =
-                    GameObject.getObjectByName('FloorGameObject')
-                let floorComponent =
-                    floorGameObject.getComponent('FloorComponent')
+                let floorGameObjects =
+                    GameObject.getObjectsByName('FloorGameObject')
 
                 // If the shield is in the air then apply the effect of gravity
                 if (this.shield.y_v < 12) this.shield.y_v += this.gravity
@@ -1895,35 +1933,40 @@ class EnemyShieldComponent extends Component {
                     ) {
                         let plat = platformComponent.platforms[i]
                         if (
-                            plat.x < this.transform.x + this.shield.width &&
-                            this.transform.x < plat.x + plat.width &&
-                            plat.y < this.transform.y &&
-                            this.transform.y < plat.y + plat.height
+                            this.transform.y + 2 * this.shield.height <=
+                            plat.y + plat.height
                         ) {
-                            this.transform.y = plat.y
+                            this.transform.y =
+                                plat.y - plat.height - 2 * this.shield.height
                             this.shield.stuck = true
                         }
                     }
                 }
 
                 // Check for collisions with the floor
-                let plat = floorComponent.floor
-                console.log(`shield: ${this.transform.y}, platform: ${plat.y}`)
-                console.log(
-                    `shield + height: ${
-                        this.transform.y + this.shield.height
-                    }, platform + height: ${plat.y + plat.height}`
-                )
-                if (
-                    this.transform.y + 2 * this.shield.height <=
-                    plat.y + plat.height
-                ) {
-                    this.transform.y =
-                        plat.y - plat.height - 2 * this.shield.height
-                    this.shield.stuck = true
-                }
-                if (this.transform.y >= plat.y + 1000) {
-                    this.parent.destroy()
+                for (let floorGameObject of floorGameObjects) {
+                    let floorComponent =
+                        floorGameObject.getComponent('FloorComponent')
+                    let plat = floorComponent.floor
+                    console.log(
+                        `shield: ${this.transform.y}, platform: ${plat.y}`
+                    )
+                    console.log(
+                        `shield + height: ${
+                            this.transform.y + this.shield.height
+                        }, platform + height: ${plat.y + plat.height}`
+                    )
+                    if (
+                        this.transform.y + 2 * this.shield.height <=
+                        plat.y + plat.height
+                    ) {
+                        this.transform.y =
+                            plat.y - plat.height - 2 * this.shield.height
+                        this.shield.stuck = true
+                    }
+                    if (this.transform.y >= plat.y + 1000) {
+                        this.parent.destroy()
+                    }
                 }
             }
             if (this.shield.stuck) {
@@ -1978,7 +2021,7 @@ class PlatformComponent extends Component {
         this.platforms = []
 
         // =======================================================
-        // Middle area platforms
+        // First area platforms
         // =======================================================
         this.platforms.push({
             x: 150,
@@ -2029,16 +2072,20 @@ class PlatformComponent extends Component {
         )
 
         // =======================================================
-        // Lower Area Platforms
+        // Middle Area Platforms
         // =======================================================
 
-        // this.platforms.push({
-        //     x: -110,
-        //     y: 580,
-        //     width: 110,
-        //     height: 15,
-        //     passable: true,
-        // })
+        this.platforms.push({
+            x: 550,
+            y: 330,
+            width: 250,
+            height: 15,
+            passable: true,
+        })
+
+        this.parent.addComponent(
+            new Rectangle('#4250ed', 'transparent', 1, 550, 330, 250, 15)
+        )
     }
 }
 
@@ -2455,12 +2502,27 @@ class MainScene extends Scene {
         this.addGameObject(new EnemyGameObject(1)).layer = -1
         this.addGameObject(new EnemyGameObject(2)).layer = -1
         this.addGameObject(new EnemyGameObject(3)).layer = -1
+        // Enemy under the platforms
+        this.addGameObject(new EnemyGameObject(4)).layer = -1
+
+        // Two enemies in divots -- cannot move
+        this.addGameObject(new EnemyGameObject(5)).layer = -1
+        this.addGameObject(new EnemyGameObject(6)).layer = -1
+
+        // Enemy on platform with sword and shield
+        this.addGameObject(new EnemyGameObject(7)).layer = -1
+
         this.addGameObject(
             new GameObject('PlatformGameObject').addComponent(
                 new PlatformComponent()
             )
         ).layer = 5
-        this.addGameObject(new FloorGameObject(0, 500, 1000, 15)).layer = 5
+        this.addGameObject(new FloorGameObject(0, 500, 500, 15)).layer = 5
+        this.addGameObject(new FloorGameObject(500, 515, 25, 15)).layer = 5
+        this.addGameObject(new FloorGameObject(525, 530, 300, 15)).layer = 5
+        this.addGameObject(new FloorGameObject(825, 515, 25, 15)).layer = 5
+        this.addGameObject(new FloorGameObject(850, 500, 500, 15)).layer = 5
+
         this.addGameObject(new FloorGameObject(-25, 515, 25, 15)).layer = 5
         this.addGameObject(new FloorGameObject(-50, 530, 25, 15)).layer = 5
         this.addGameObject(new FloorGameObject(-225, 545, 175, 15)).layer = 5
