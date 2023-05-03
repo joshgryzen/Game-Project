@@ -3,12 +3,21 @@ import '/engine/engine.js'
 //-----------------------------------------------------
 //Start
 
+// TODO - make a death plane where the player dies when entering
+
 class CheckpointComponent extends Component {
     name = 'CheckpointComponent'
     benchId = 0
     spawn_x = 0
     spawn_y = 0
+    equipedSword = false
+    equipedShield = false
+    doorSpawn = false
+    doorSpawn_x
+    doorSpawn_y
     start() {}
+
+    // Bench logic
     updateId(id) {
         this.benchId = id
         // document.cookies = this.benchId
@@ -25,6 +34,38 @@ class CheckpointComponent extends Component {
     }
     getSpawnY() {
         return this.spawn_y
+    }
+
+    // Door logic
+    setDoorLocation(x, y) {
+        this.doorSpawn_x = x
+        this.doorSpawn_y = y
+    }
+    getDoorSpawnX() {
+        return this.doorSpawn_x
+    }
+    getDoorSpawnY() {
+        return this.doorSpawn_y
+    }
+    getDoor() {
+        return this.doorSpawn
+    }
+    setDoor(door) {
+        this.doorSpawn = door
+    }
+
+    // Equipment logic
+    setSwordEquipment(sword = false) {
+        this.equipedSword = sword
+    }
+    setShieldEquipment(shield = false) {
+        this.equipedShield = shield
+    }
+    getSwordEquipment() {
+        return this.equipedSword
+    }
+    getShieldEquipment() {
+        return this.equipedShield
     }
 }
 
@@ -100,10 +141,17 @@ class SadSwordComponent extends Component {
             ) {
                 if (keysDown['e']) {
                     this.parent.destroy()
+                    let checkpointGameObject = GameObject.getObjectByName(
+                        'CheckpointGameObject'
+                    )
+
+                    let checkpointComponent = checkpointGameObject.getComponent(
+                        'CheckpointComponent'
+                    )
                     GameObject.instantiate(
                         new SwordGameObject().addComponent(new Line('black', 3))
                     )
-                    playerComponent.player.equipedSword = true
+                    checkpointComponent.setSwordEquipment(true)
                 }
             }
         }
@@ -137,12 +185,26 @@ class StartController extends Component {
         let startTextGameObject_2 = GameObject.getObjectByName(
             'StartTextGameObject_2'
         )
-        if (checkpointComponent.benchId != 0 && !this.spawned) {
+
+        // Spawn in the sword if the player hasn't picked it up yet
+        if (!checkpointComponent.getSwordEquipment()) {
+            GameObject.instantiate(new SadSwordGameObject())
+        }
+
+        // If this isn't the first time in this area don't display the welcome text and hints
+        if (
+            (checkpointComponent.benchId != 0 ||
+                checkpointComponent.getDoorSpawnX()) &&
+            !this.spawned
+        ) {
             this.spawned = true
             if (startTextGameObject) startTextGameObject.destroy()
             if (startTextGameObject_2) startTextGameObject_2.destroy()
             GameObject.instantiate(new PlayerGameObject())
-        } else if (checkpointComponent.benchId == 0) {
+        } else if (
+            checkpointComponent.benchId == 0 &&
+            !checkpointComponent.getDoorSpawnX()
+        ) {
             this.freezeTime += Time.deltaTime
             if (
                 !this.spawned &&
@@ -158,7 +220,6 @@ class StartController extends Component {
                 // SceneManager.changeScene(1)
                 GameObject.instantiate(new PlayerGameObject())
                 // GameObject.getObjectByName('PlayerGameObject').doNotDestroyOnLoad()
-                GameObject.instantiate(new SadSwordGameObject())
             }
             if (this.freezeTime >= 1 && this.freezeTime < 2 && this.spawned) {
                 GameObject.instantiate(new Hint_1())
@@ -235,7 +296,7 @@ class MainController extends Component {
     name = 'MainController'
     enemy_count = 3
     start() {
-        // this.enemy_count = 3
+        GameObject.getObjectByName('CheckpointGameObject').doNotDestroyOnLoad()
     }
     update() {
         let playerGameObject = GameObject.getObjectByName('PlayerGameObject')
@@ -298,20 +359,6 @@ class PlayerComponent extends Component {
             height: 20,
             width: 20,
             sitting: false,
-            equipedSword: false,
-            equipedShield: false,
-        }
-
-        // Instantiate the sword
-        if (this.player.equipedSword) {
-            GameObject.instantiate(
-                new SwordGameObject().addComponent(new Line('black', 3))
-            )
-        }
-
-        // Instantiate the shield
-        if (this.player.equipedShield) {
-            GameObject.instantiate(new ShieldGameObject())
         }
 
         // get any checkpoints
@@ -323,14 +370,41 @@ class PlayerComponent extends Component {
             'CheckpointComponent'
         )
 
-        this.transform.x = checkpointComponent.getSpawnX()
-        this.transform.y = checkpointComponent.getSpawnY()
+        // Instantiate the sword
+        if (checkpointComponent.getSwordEquipment()) {
+            GameObject.instantiate(
+                new SwordGameObject().addComponent(new Line('black', 3))
+            )
+        }
+
+        // Instantiate the shield
+        if (checkpointComponent.getShieldEquipment()) {
+            GameObject.instantiate(new ShieldGameObject())
+        }
+
+        // First check if we traveled through a door
+        if (checkpointComponent.getDoor()) {
+            this.transform.x = checkpointComponent.getDoorSpawnX()
+            this.transform.y = checkpointComponent.getDoorSpawnY()
+
+            // Set the door condition to be false
+            // so that if we die we respawn at our last bench pos instead of the door
+            checkpointComponent.setDoor(false)
+        }
+
+        // If not, we died and need to respawn
+        else {
+            this.transform.x = checkpointComponent.getSpawnX()
+            this.transform.y = checkpointComponent.getSpawnY()
+
+            if (checkpointComponent.getId() != 0) {
+                this.player.sitting = true
+            }
+        }
+
         this.transform.sx = this.player.width
         this.transform.sy = this.player.height
 
-        if (checkpointComponent.getId() != 0) {
-            this.player.sitting = true
-        }
         // Gravity and Friction variables
         this.gravity = 0.3
         this.friction = 0.7
@@ -433,7 +507,7 @@ class PlayerComponent extends Component {
                         this.player.y_v = 0
                         this.transform.y = plat.y - this.player.height
                     }
-                    if (this.transform.y >= plat.y + 400) {
+                    if (this.transform.y >= plat.y + 1000) {
                         SceneManager.changeScene(2)
                     }
                 }
@@ -1871,6 +1945,50 @@ class DoorComponent extends Component {
         // this.parent.addComponent(new Rectangle('#debc90'))
         this.parent.addComponent(new Rectangle('#de8816'))
         this.parent.addComponent(new Rectangle('none', '#38250b', 6))
+
+        this.freezeTime = 0
+        this.maxFreezeTime = 1
+    }
+    update() {
+        let checkpointGameObject = GameObject.getObjectByName(
+            'CheckpointGameObject'
+        )
+
+        let checkpointComponent = checkpointGameObject.getComponent(
+            'CheckpointComponent'
+        )
+        let playerGameObject = GameObject.getObjectByName('PlayerGameObject')
+        if (playerGameObject) {
+            let playerComponent =
+                playerGameObject.getComponent('PlayerComponent')
+            this.freezeTime += Time.deltaTime
+            if (
+                Math.abs(
+                    this.transform.x +
+                        this.door.width / 2 -
+                        (playerComponent.transform.x +
+                            playerComponent.player.width / 2)
+                ) <= 25 &&
+                Math.abs(
+                    this.transform.y +
+                        this.door.height -
+                        (playerComponent.transform.y +
+                            playerComponent.player.height)
+                ) <= 25
+            ) {
+                if (keysDown['e'] && this.freezeTime >= this.maxFreezeTime) {
+                    if (this.door.id == 1) {
+                        checkpointComponent.setDoor(true)
+                        checkpointComponent.setDoorLocation(-400, 435)
+                        SceneManager.changeScene(1)
+                    } else if (this.door.id == 2) {
+                        checkpointComponent.setDoor(true)
+                        checkpointComponent.setDoorLocation(1375, -40)
+                        SceneManager.changeScene(0)
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -1943,9 +2061,9 @@ class EndController extends Component {
                     'CheckpointComponent'
                 )
                 console.log(checkpointComponent.benchId)
-                if (checkpointComponent.benchId < 0) {
-                    SceneManager.changeScene(0)
-                } else SceneManager.changeScene(1)
+                if (checkpointComponent.benchId > 0) {
+                    SceneManager.changeScene(1)
+                } else SceneManager.changeScene(0)
             }
         }
     }
