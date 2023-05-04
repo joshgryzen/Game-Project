@@ -143,7 +143,6 @@ class SadSwordComponent extends Component {
             let checkpointComponent = checkpointGameObject.getComponent(
                 'CheckpointComponent'
             )
-
             if (
                 Math.abs(this.transform.x - playerComponent.transform.x) <= 30
             ) {
@@ -474,6 +473,7 @@ class PlayerComponent extends Component {
         this.markForPass = false
     }
     update() {
+        let fallen = false
         let platformGameObject =
             GameObject.getObjectByName('PlatformGameObject')
 
@@ -576,7 +576,8 @@ class PlayerComponent extends Component {
                         this.transform.y = plat.y - this.player.height
                     }
                     if (this.transform.y >= plat.y + 1000) {
-                        SceneManager.changeScene(2)
+                        fallen = true
+                        // SceneManager.changeScene(2)
                     }
                 }
             }
@@ -722,7 +723,7 @@ class PlayerComponent extends Component {
                     }
                 }
             }
-            if (in_range && !blocked) {
+            if ((in_range && !blocked) || fallen) {
                 SceneManager.changeScene(2)
             }
         } else this.parent.layer = -1
@@ -1197,7 +1198,6 @@ class EnemyComponent extends Component {
                     this.player.canJump = true
                     this.transform.y = plat.y - this.player.height
                     if (this.walking) {
-                        console.log('hello??')
                         if (this.player.direction == 0) {
                             if (
                                 this.transform.x + this.player.width <=
@@ -1606,6 +1606,7 @@ class EnemySwordComponent extends Component {
                     this.sword.blocked &&
                     this.blockedTime <= this.maxBlockedTime
                 ) {
+                    this.freezeTime = 0
                     this.sword.isSwinging = false
                     this.sword.canSwing = false
                     this.blockedTime += Time.deltaTime
@@ -1613,6 +1614,7 @@ class EnemySwordComponent extends Component {
                     this.sword.blocked &&
                     this.blockedTime >= this.maxBlockedTime
                 ) {
+                    this.freezeTime = 0
                     this.sword.canSwing = true
                     this.sword.blocked = false
                 }
@@ -1910,7 +1912,6 @@ class EnemyShieldComponent extends Component {
         }
         if (!this.found) {
             this.shield.isBlocking = false
-            console.log(this.shield.stuck)
             if (!this.shield.stuck) {
                 let platformGameObject =
                     GameObject.getObjectByName('PlatformGameObject')
@@ -1933,11 +1934,13 @@ class EnemyShieldComponent extends Component {
                     ) {
                         let plat = platformComponent.platforms[i]
                         if (
-                            this.transform.y + 2 * this.shield.height <=
-                            plat.y + plat.height
+                            this.transform.y <= plat.y &&
+                            this.transform.y + this.shield.height >= plat.y &&
+                            this.transform.x >= plat.x &&
+                            this.transform.x + this.shield.width <=
+                                plat.x + plat.width
                         ) {
-                            this.transform.y =
-                                plat.y - plat.height - 2 * this.shield.height
+                            this.transform.y = plat.y
                             this.shield.stuck = true
                         }
                     }
@@ -1948,20 +1951,15 @@ class EnemyShieldComponent extends Component {
                     let floorComponent =
                         floorGameObject.getComponent('FloorComponent')
                     let plat = floorComponent.floor
-                    console.log(
-                        `shield: ${this.transform.y}, platform: ${plat.y}`
-                    )
-                    console.log(
-                        `shield + height: ${
-                            this.transform.y + this.shield.height
-                        }, platform + height: ${plat.y + plat.height}`
-                    )
+
                     if (
-                        this.transform.y + 2 * this.shield.height <=
-                        plat.y + plat.height
+                        this.transform.y <= plat.y &&
+                        this.transform.y + this.shield.height >= plat.y &&
+                        this.transform.x >= plat.x &&
+                        this.transform.x + this.shield.width <=
+                            plat.x + plat.width
                     ) {
-                        this.transform.y =
-                            plat.y - plat.height - 2 * this.shield.height
+                        this.transform.y = plat.y
                         this.shield.stuck = true
                     }
                     if (this.transform.y >= plat.y + 1000) {
@@ -1992,7 +1990,6 @@ class EnemyShieldComponent extends Component {
                         keysDown['e'] &&
                         !checkpointComponent.getShieldEquipment()
                     ) {
-                        console.log('hello?')
                         GameObject.instantiate(new ShieldGameObject())
                         checkpointComponent.setShieldEquipment(true)
                         this.parent.destroy()
