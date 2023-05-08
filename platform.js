@@ -143,16 +143,20 @@ class SadSwordComponent extends Component {
             let checkpointComponent = checkpointGameObject.getComponent(
                 'CheckpointComponent'
             )
+            console.log(
+                `sword x: ${this.transform.x}, sword y: ${this.transform.y}`
+            )
             if (
                 Math.abs(this.transform.x - playerComponent.transform.x) <= 30
             ) {
+                console.log(checkpointComponent.getSwordEquipment())
                 if (keysDown['e'] && !checkpointComponent.getSwordEquipment()) {
                     GameObject.instantiate(
                         new SwordGameObject().addComponent(new Line('black', 3))
                     )
                     checkpointComponent.setSwordEquipment(true)
                 }
-                if (checkpointComponent.getSwordEquipment) {
+                if (checkpointComponent.getSwordEquipment()) {
                     this.parent.destroy()
                 }
             }
@@ -174,6 +178,17 @@ class StartController extends Component {
         this.enemy_count = 1
         GameObject.getObjectByName('CheckpointGameObject').doNotDestroyOnLoad()
         this.playerStarted = false
+
+        let checkpointGameObject = GameObject.getObjectByName(
+            'CheckpointGameObject'
+        )
+        let checkpointComponent = checkpointGameObject.getComponent(
+            'CheckpointComponent'
+        )
+        // Spawn in the sword if the player hasn't picked it up yet
+        if (!checkpointComponent.getSwordEquipment()) {
+            GameObject.instantiate(new SadSwordGameObject())
+        }
     }
     update() {
         let checkpointGameObject = GameObject.getObjectByName(
@@ -188,11 +203,6 @@ class StartController extends Component {
         let startTextGameObject_2 = GameObject.getObjectByName(
             'StartTextGameObject_2'
         )
-
-        // Spawn in the sword if the player hasn't picked it up yet
-        if (!checkpointComponent.getSwordEquipment()) {
-            GameObject.instantiate(new SadSwordGameObject())
-        }
 
         // If this isn't the first time in this area don't display the welcome text and hints
         if (checkpointComponent.spawned) {
@@ -1464,7 +1474,7 @@ class EnemyGameObject extends GameObject {
             this.x_start = -40
             this.y_start = 60
             this.sword = true
-            this.shield = false
+            this.shield = true
             this.addComponent(new Rectangle('#d6d64b'))
         } else if (this.id == 3) {
             this.walking = true
@@ -1499,7 +1509,7 @@ class EnemyGameObject extends GameObject {
             this.x_start = 550
             this.y_start = 300
             this.sword = true
-            this.shield = true
+            this.shield = false
             this.addComponent(new Rectangle('#d6d64b'))
         }
         // first scene
