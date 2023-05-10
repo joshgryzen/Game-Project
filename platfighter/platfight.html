@@ -8,8 +8,13 @@
         <canvas id="canv"></canvas>
         <script type="module">
             import '/engine/engine.js'
-            import './platform.js'
-            SceneManager.startScenes(allScenes, 'Platform')
+            import './platfight.js'
+            SceneManager.startScenes(allScenes)
+            start('Platfighter', {
+                aspectRatio: 16 / 9,
+                logicalWidth: 600,
+                letterboxColor: 'black',
+            })
         </script>
     </body>
 </html>

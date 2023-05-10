@@ -4,7 +4,6 @@ import '/engine/engine.js'
 //Start
 
 // TODO - make a death plane where the player dies when entering
-// TODO - update shield falling logic
 
 class CheckpointComponent extends Component {
     name = 'CheckpointComponent'
