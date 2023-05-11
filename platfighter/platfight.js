@@ -301,7 +301,7 @@ class EnemyShieldComponent extends Component {
                 ) {
                     // Player 1 picks up the shield
                     if (playerComponent.input == 'WASD') {
-                        if (keysDown['e']) {
+                        if (Input.keyUp['e']) {
                             GameObject.instantiate(
                                 new ShieldGameObject(playerComponent.input)
                             )
@@ -312,7 +312,7 @@ class EnemyShieldComponent extends Component {
 
                     // Player 2 picks up the shield
                     else if (playerComponent.input == 'Arrows') {
-                        if (keysDown['/']) {
+                        if (Input.keyUp['/']) {
                             GameObject.instantiate(
                                 new ShieldGameObject(playerComponent.input)
                             )
