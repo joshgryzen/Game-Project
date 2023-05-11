@@ -27,6 +27,7 @@ class Input {
         Input.lastMouseY = Input.mouseY
         Input.tick = 0
         Input.mouseUp = false
+        Input.keyUp = []
     }
 
     static start() {
@@ -64,7 +65,9 @@ class Input {
         })
 
         // Keyup event to canvas -> https://developer.mozilla.org/en-US/docs/Web/API/Element/keyup_event
-        document.addEventListener('keyup', (e) => {})
+        document.addEventListener('keyup', (e) => {
+            Input.keyUp[e.key] = true
+        })
 
         // Keydown event to the canvas -> https://developer.mozilla.org/en-US/docs/Web/API/Element/keydown_event
         document.addEventListener('keydown', (e) => {})

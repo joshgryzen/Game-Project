@@ -151,7 +151,10 @@ class SadSwordComponent extends Component {
             if (
                 Math.abs(this.transform.x - playerComponent.transform.x) <= 30
             ) {
-                if (keysDown['e'] && !checkpointComponent.getSwordEquipment()) {
+                if (
+                    Input.keyUp['e'] &&
+                    !checkpointComponent.getSwordEquipment()
+                ) {
                     GameObject.instantiate(
                         new SwordGameObject().addComponent(new Line('black', 3))
                     )
@@ -174,8 +177,6 @@ class SadSwordGameObject extends GameObject {
 
 class StartController extends Component {
     start() {
-        this.freezeTime = 0
-        this.maxFreezeTime = 0.5
         this.enemy_count = 1
         GameObject.getObjectByName('CheckpointGameObject').doNotDestroyOnLoad()
         this.playerStarted = false
@@ -214,9 +215,7 @@ class StartController extends Component {
                 GameObject.instantiate(new PlayerGameObject())
             }
         } else {
-            this.freezeTime += Time.deltaTime
-            if (keysDown['Enter'] && this.freezeTime >= this.maxFreezeTime) {
-                this.freezeTime = 0
+            if (Input.keyUp['Enter']) {
                 checkpointComponent.spawned = true
 
                 if (startTextGameObject) startTextGameObject.destroy()
@@ -226,26 +225,6 @@ class StartController extends Component {
                 this.playerStarted = true
                 GameObject.instantiate(new PlayerGameObject())
                 // GameObject.getObjectByName('PlayerGameObject').doNotDestroyOnLoad()
-            }
-            if (
-                this.freezeTime >= 1 &&
-                this.freezeTime < 2 &&
-                checkpointComponent.spawned
-            ) {
-                GameObject.instantiate(new Hint_1())
-            }
-            if (
-                this.freezeTime >= 2 &&
-                this.freezeTime < 4 &&
-                checkpointComponent.spawned
-            ) {
-                let hint_1 = GameObject.getObjectByName('Hint_1')
-                if (hint_1) hint_1.destroy()
-                else GameObject.instantiate(new Hint_2())
-            }
-            if (this.freezeTime >= 4 && checkpointComponent.spawned) {
-                let hint_2 = GameObject.getObjectByName('Hint_2')
-                if (hint_2) hint_2.destroy()
             }
         }
 
@@ -1999,7 +1978,7 @@ class EnemyShieldComponent extends Component {
                     30
                 ) {
                     if (
-                        keysDown['e'] &&
+                        Input.keyUp['e'] &&
                         !checkpointComponent.getShieldEquipment()
                     ) {
                         GameObject.instantiate(new ShieldGameObject())
@@ -2156,8 +2135,6 @@ class BenchComponent extends Component {
         }
         this.sit_x
         this.sit_y
-        this.freezeTime = 0
-        this.maxFreezeTime = 0.5
 
         // Front left leg
         this.parent.addComponent(
@@ -2348,7 +2325,6 @@ class BenchComponent extends Component {
         )
     }
     update() {
-        this.freezeTime += Time.deltaTime
         let playerGameObject = GameObject.getObjectByName('PlayerGameObject')
         if (playerGameObject) {
             let player = playerGameObject.getComponent('PlayerComponent')
@@ -2374,11 +2350,7 @@ class BenchComponent extends Component {
                     player.transform.y <= this.bench.y &&
                     player.transform.y >= this.bench.y - this.bench.height * 3.3
                 ) {
-                    if (
-                        (keysDown['e'] || keysDown['E']) &&
-                        this.freezeTime >= this.maxFreezeTime
-                    ) {
-                        this.freezeTime = 0
+                    if (Input.keyUp['e'] || Input.keyUp['E']) {
                         if (!player.player.sitting) {
                             checkpointComponent.updateId(this.bench.id)
                             player.player.sitting = true
@@ -2435,9 +2407,6 @@ class DoorComponent extends Component {
         // this.parent.addComponent(new Rectangle('#debc90'))
         this.parent.addComponent(new Rectangle('#de8816'))
         this.parent.addComponent(new Rectangle('none', '#38250b', 6))
-
-        this.freezeTime = 0
-        this.maxFreezeTime = 1
     }
     update() {
         let checkpointGameObject = GameObject.getObjectByName(
@@ -2451,7 +2420,6 @@ class DoorComponent extends Component {
         if (playerGameObject) {
             let playerComponent =
                 playerGameObject.getComponent('PlayerComponent')
-            this.freezeTime += Time.deltaTime
             if (
                 Math.abs(
                     this.transform.x +
@@ -2466,7 +2434,7 @@ class DoorComponent extends Component {
                             playerComponent.player.height)
                 ) <= 25
             ) {
-                if (keysDown['e'] && this.freezeTime >= this.maxFreezeTime) {
+                if (Input.keyUp['e']) {
                     if (this.door.id == 1) {
                         checkpointComponent.setDoor(true)
                         checkpointComponent.setDoorLocation(-400, 435)
@@ -2551,25 +2519,19 @@ class MainScene extends Scene {
 // =================================================== //
 
 class EndController extends Component {
-    start() {
-        this.freezeTime = 0
-        this.maxFreezeTime = 1
-    }
+    start() {}
     update() {
-        this.freezeTime += Time.deltaTime
-        if (this.freezeTime >= this.maxFreezeTime) {
-            if (keysDown['Enter']) {
-                // SceneManager.changeScene(1)
-                let checkpointGameObject = GameObject.getObjectByName(
-                    'CheckpointGameObject'
-                )
-                let checkpointComponent = checkpointGameObject.getComponent(
-                    'CheckpointComponent'
-                )
-                if (checkpointComponent.benchId > 0) {
-                    SceneManager.changeScene(1)
-                } else SceneManager.changeScene(0)
-            }
+        if (Input.keyUp['Enter']) {
+            // SceneManager.changeScene(1)
+            let checkpointGameObject = GameObject.getObjectByName(
+                'CheckpointGameObject'
+            )
+            let checkpointComponent = checkpointGameObject.getComponent(
+                'CheckpointComponent'
+            )
+            if (checkpointComponent.benchId > 0) {
+                SceneManager.changeScene(1)
+            } else SceneManager.changeScene(0)
         }
     }
 }
