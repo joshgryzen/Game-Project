@@ -2,6 +2,8 @@
 //
 // Educative (2023) "How to make a simple platformer using JavaScript" [Source code] https://www.educative.io/answers/how-to-make-a-simple-platformer-using-javascript
 
+// Lerp tutorial for sword movement from https://gamedevbeginner.com/the-right-way-to-lerp-in-unity-with-examples/
+
 import '/engine/engine.js'
 
 // =================================================== //
