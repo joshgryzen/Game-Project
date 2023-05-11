@@ -1,4 +1,4 @@
-// Transcribed and modified from https://github.com/CS2510/Spring2023.Day15Starter/blob/main/engine/Input.js
+// Transcribed from https://github.com/CS2510/Spring2023.Day15Starter/blob/main/engine/Input.js
 //
 // Ricks, B (2023) CS2510 Game Engine (Spring2023.Day15Starter) [Source code]. https://github.com/CS2510/Spring2023.Day15Starter
 

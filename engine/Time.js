@@ -1,12 +1,7 @@
-/**
- * The time class
- * Make static calls to this class to get timing information
- *
- * Notable differences from Unity:
- * - We do not allow for time to be scaled (sped up or slowed down)
- * - We only update at a fixed rate, so deltaTime maps to fixedDeltaTime in Unity
- * - We don't store time values in different formats because js is dynamically typed
- */
+// Transcribed from https://github.com/CS2510/Spring2023.Day15Starter/blob/main/engine/Time.js
+//
+// Ricks, B (2023) CS2510 Game Engine (Spring2023.Day15Starter) [Source code]. https://github.com/CS2510/Spring2023.Day15Starter
+
 class Time {
     /** The time in seconds between frames */
     static deltaTime = 1 / 60

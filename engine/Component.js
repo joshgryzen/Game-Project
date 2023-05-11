@@ -1,9 +1,7 @@
-/**
- * The Component class.
- * Components are where the majority of the game code goes.
- * This class should be treated as though it were abstract.
- * (You should extend this class instead of calling `new Component()`.)
- */
+// Transcribed and modified from https://github.com/CS2510/Spring2023.Day15Starter/blob/main/engine/Component.js
+//
+// Ricks, B (2023) CS2510 Game Engine (Spring2023.Day15Starter) [Source code]. https://github.com/CS2510/Spring2023.Day15Starter
+
 class Component {
     /** The name of the component */
     name = this.constructor.name
@@ -62,6 +60,8 @@ class Component {
     //Since we do not have "set transform(newTransform)"
     //transform is read-only
 
+    // linear interpolation formula Jonathan showed me
+    // Unity docs -> https://docs.unity3d.com/ScriptReference/Vector3.Lerp.html
     static lerp = (start, end, amount) => (1 - amount) * start + amount * end
     // static dist_x = (comp1, comp2) => comp1.transform.x - comp2.transform.x
 }

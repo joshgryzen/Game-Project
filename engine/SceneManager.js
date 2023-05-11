@@ -1,10 +1,6 @@
-/**
- * The container for scenes.
- * All functions and member variables on this class are static.
- * See https://docs.unity3d.com/ScriptReference/SceneManagement.SceneManager.html
- *
- * For more information on static see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Classes/static
- */
+// Transcribed from https://github.com/CS2510/Spring2023.Day15Starter/blob/main/engine/SceneManager.js
+//
+// Ricks, B (2023) CS2510 Game Engine (Spring2023.Day15Starter) [Source code]. https://github.com/CS2510/Spring2023.Day15Starter
 
 class SceneManager {
     /**

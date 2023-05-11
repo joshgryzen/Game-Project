@@ -1,6 +1,7 @@
-/**
- * A circle engine-level component
- */
+// Transcribed and modified from https://github.com/CS2510/Spring2023.Day15Starter/blob/main/engine/Line.js
+//
+// Ricks, B (2023) CS2510 Game Engine (Spring2023.Day15Starter) [Source code]. https://github.com/CS2510/Spring2023.Day15Starter
+
 class Line extends Component {
     /** The name of the component */
     name = 'Line'

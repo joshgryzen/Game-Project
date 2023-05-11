@@ -1,9 +1,7 @@
-/**
- * The scene class.
- *
- * Scenes are containers for game objects.
- * See https://docs.unity3d.com/Manual/CreatingScenes.html
- */
+// Transcribed from https://github.com/CS2510/Spring2023.Day15Starter/blob/main/engine/Scene.js
+//
+// Ricks, B (2023) CS2510 Game Engine (Spring2023.Day15Starter) [Source code]. https://github.com/CS2510/Spring2023.Day15Starter
+
 class Scene {
     /** List of game objects in the scene */
     gameObjects = []

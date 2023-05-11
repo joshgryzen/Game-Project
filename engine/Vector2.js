@@ -1,3 +1,7 @@
+// Transcribed from https://github.com/CS2510/Spring2023.Day15Starter/blob/main/engine/Vector2.js
+//
+// Ricks, B (2023) CS2510 Game Engine (Spring2023.Day15Starter) [Source code]. https://github.com/CS2510/Spring2023.Day15Starter
+
 class Vector2 {
     x = 0
     y = 0

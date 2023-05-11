@@ -1,9 +1,7 @@
-/**
- * The game object class. All components are contianed in game objects
- * Game objects are not abstract, you can directly create game objects
- * as needed.
- * See https://docs.unity3d.com/ScriptReference/GameObject.html
- */
+// Transcribed and modified from https://github.com/CS2510/Spring2023.Day15Starter/blob/main/engine/GameObject.js
+//
+// Ricks, B (2023) CS2510 Game Engine (Spring2023.Day15Starter) [Source code]. https://github.com/CS2510/Spring2023.Day15Starter
+
 class GameObject {
     /** The name of the game object */
     name = ''

@@ -1,15 +1,7 @@
-/**
- * A camera engine-level component
- *
- * The camera is in charge of:
- * - setting the background color
- * - holding the position and zoom of the virtual camera
- *
- * The position of the camera is specified in this.transform.x and this.transform.y
- * The scale of the camera is specified in this.transform.sx
- *
- * This class also has static functions for moving between spaces
- */
+// Transcribed from https://github.com/CS2510/Spring2023.Day15Starter/blob/main/engine/Camera.js
+//
+// Ricks, B (2023) CS2510 Game Engine (Spring2023.Day15Starter) [Source code]. https://github.com/CS2510/Spring2023.Day15Starter
+
 class Camera extends Component {
     /** The name of the component */
     name = 'Camera'
