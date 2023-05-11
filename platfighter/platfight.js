@@ -1,9 +1,12 @@
+// Basic logic for platforms and player inspired from https://www.educative.io/answers/how-to-make-a-simple-platformer-using-javascript
+//
+// Educative (2023) "How to make a simple platformer using JavaScript" [Source code] https://www.educative.io/answers/how-to-make-a-simple-platformer-using-javascript
+
 import '/engine/engine.js'
 
-//-----------------------------------------------------
-//Start
-
-// TODO - make a death plane where the player dies when entering
+// =================================================== //
+//                        Start                        //
+// =================================================== //
 
 class CheckpointComponent extends Component {
     name = 'CheckpointComponent'
@@ -70,7 +73,9 @@ class CheckpointComponent extends Component {
     }
 }
 
-// Modified momentum boundary tracker
+// Modified momentum boundary tracker from https://github.com/CS2510/Spring2023.Day13Ender/blob/main/camera-tracking/camera-tracking.js
+//
+// Ricks, B (2023) CS2510 Game Engine (Spring2023.Day13Starter) [Source code]. https://github.com/CS2510/Spring2023.Day13Starter
 class MainCameraComponent extends Component {
     start() {}
     update() {
@@ -79,6 +84,8 @@ class MainCameraComponent extends Component {
         if (playerGameObjects) {
             let player_1 = playerGameObjects[0].getComponent('PlayerComponent')
             let player_2 = playerGameObjects[1].getComponent('PlayerComponent')
+
+            // Center the camera on the average x transform of the two players
             let maxDifference = 80
             let difference =
                 (player_1.transform.x + player_2.transform.x) / 2 -
@@ -91,6 +98,7 @@ class MainCameraComponent extends Component {
                 this.transform.x += 0.1 * (difference + maxDifference)
             }
 
+            // Center the camera on the average y transform of the two players
             maxDifference = 30
             difference =
                 (player_1.transform.y +
@@ -99,13 +107,15 @@ class MainCameraComponent extends Component {
                     2 -
                 this.transform.y
             if (difference > maxDifference) {
-                //The player is to the right
+                //The player is below
                 this.transform.y += 0.1 * (difference - maxDifference)
             } else if (difference < -maxDifference) {
-                //The player is to the left
+                //The player is above
                 this.transform.y += 0.1 * (difference + maxDifference)
             }
 
+            // Scale the camera based off how far away the players are from each other
+            // Zoom in if they are close, zoom out if they are far away - 200 arbritarily chosen because 100 was too fast
             let scale =
                 200 /
                 Math.abs(
@@ -114,6 +124,8 @@ class MainCameraComponent extends Component {
                         player_2.transform.x -
                         player_1.player.width / 2
                 )
+
+            // Set a max and min scale so that the camera does not go crazy
             scale <= 1
                 ? scale >= 0.5
                     ? (this.transform.sx = scale)
