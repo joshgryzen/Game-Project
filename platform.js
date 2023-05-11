@@ -73,11 +73,12 @@ class CheckpointComponent extends Component {
     }
 }
 
-// Modified momentum boundary tracker
+// Modified momentum boundary tracker from https://github.com/CS2510/Spring2023.Day13Ender/blob/main/camera-tracking/camera-tracking.js
+//
+// Ricks, B (2023) CS2510 Game Engine (Spring2023.Day13Starter) [Source code]. https://github.com/CS2510/Spring2023.Day13Starter
 class MainCameraComponent extends Component {
     start() {}
     update() {
-        // this.transform.x = 600
         let playerGameObject = GameObject.getObjectByName('PlayerGameObject')
         if (playerGameObject) {
             let maxDifference = 80
@@ -145,13 +146,9 @@ class SadSwordComponent extends Component {
             let checkpointComponent = checkpointGameObject.getComponent(
                 'CheckpointComponent'
             )
-            console.log(
-                `sword x: ${this.transform.x}, sword y: ${this.transform.y}`
-            )
             if (
                 Math.abs(this.transform.x - playerComponent.transform.x) <= 30
             ) {
-                console.log(checkpointComponent.getSwordEquipment())
                 if (keysDown['e'] && !checkpointComponent.getSwordEquipment()) {
                     GameObject.instantiate(
                         new SwordGameObject().addComponent(new Line('black', 3))
