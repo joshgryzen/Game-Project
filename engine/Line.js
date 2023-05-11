@@ -3,15 +3,13 @@
 // Ricks, B (2023) CS2510 Game Engine (Spring2023.Day15Starter) [Source code]. https://github.com/CS2510/Spring2023.Day15Starter
 
 class Line extends Component {
-    /** The name of the component */
     name = 'Line'
 
-    /** The color of the stroke. Defaults to transparent. */
     strokeStyle
 
-    /** The width of the stroke */
     lineWidth
 
+    // Overloaded constructor allowing start and end positions to be passed as parameters
     constructor(
         strokeStyle = 'transparent',
         lineWidth = 1,
@@ -29,12 +27,7 @@ class Line extends Component {
         this.endY = endY
     }
 
-    /**
-     * Draw the rectangle to the given context.
-     * @param {2DContext} ctx The context to draw to.
-     */
     draw(ctx) {
-        //Set the line style
         ctx.strokeStyle = this.strokeStyle
         ctx.lineWidth = this.lineWidth
 
@@ -50,7 +43,6 @@ class Line extends Component {
         this.endX ? (endX = this.endX) : (endX = this.transform.sx)
         this.endY ? (endY = this.endY) : (endY = this.transform.sy)
 
-        // Draw the line
         ctx.beginPath()
         ctx.moveTo(endX, endY)
         ctx.lineTo(startX, startY)
@@ -58,5 +50,4 @@ class Line extends Component {
     }
 }
 
-//Add rectangle to the global namespace.
 window.Line = Line

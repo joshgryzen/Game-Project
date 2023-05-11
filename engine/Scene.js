@@ -3,7 +3,6 @@
 // Ricks, B (2023) CS2510 Game Engine (Spring2023.Day15Starter) [Source code]. https://github.com/CS2510/Spring2023.Day15Starter
 
 class Scene {
-    /** List of game objects in the scene */
     gameObjects = []
 
     constructor(fillStyle) {
@@ -14,17 +13,6 @@ class Scene {
         )
     }
 
-    /**
-     * Add a game object to a scene.
-     * Eventually we will switch to using Instantiate
-     * See https://docs.unity3d.com/ScriptReference/Object.Instantiate.html
-     *
-     * @param {GameObject} gameObject The game object to add
-     * @param {Vector2} translate The initial translation value. If no value is provided, the tranlation is (0,0)
-     * @param {Vector2} scale The initial scale value. If no value is given, the scale is (1,1)
-     * @param {Number} rotation The initial rotation value. If no value is given, the rotation is 0
-     * @returns A reference to the game object (to make a fluent interface)
-     */
     addGameObject(
         gameObject,
         translate = Vector2.zero,
@@ -46,12 +34,6 @@ class Scene {
         return gameObject
     }
 
-    /**
-     * Add a new game object to the scene with the given transform
-     * @param {*} gameObject The game object to add.
-     * @param {*} transform The transform for the new game object. Defaults to a new transform.
-     * @returns A reference to the game object (to make a fluent interface)
-     */
     addGameObjectTransform(gameObject, transform = new Transform()) {
         this.gameObjects.push(gameObject)
         gameObject.transform = transform

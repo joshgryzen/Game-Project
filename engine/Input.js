@@ -88,6 +88,5 @@ class Input {
     }
 }
 
-//Attach Input to the global window variable
 window.Input = Input
 export default Input
