@@ -62,6 +62,15 @@ function keyDown(event) {
     if (event.key == ' ') {
         event.preventDefault()
     }
+    if (event.key == 'Control') {
+        event.preventDefault()
+    }
+    if (event.key == 'Shift') {
+        event.preventDefault()
+    }
+    if (event.key == '/') {
+        event.preventDefault()
+    }
 }
 
 // =================================================== //

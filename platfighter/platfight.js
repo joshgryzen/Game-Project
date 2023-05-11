@@ -13,8 +13,15 @@ import '/engine/engine.js'
 class CheckpointComponent extends Component {
     name = 'CheckpointComponent'
     benchId = 0
-    spawn_x = 0
-    spawn_y = 0
+
+    // Player 1 spawn
+    spawn_x_1 = -150
+    spawn_y_1 = 0
+
+    // Player 2 spawn
+    spawn_x_2 = 150
+    spawn_y_2 = 0
+
     spawned = false
     equipedSword = true
     equipedShield = false
@@ -31,15 +38,13 @@ class CheckpointComponent extends Component {
     getId() {
         return this.benchId
     }
-    setSpawnLocation(x, y) {
-        this.spawn_x = x
-        this.spawn_y = y
+    getSpawnX(input) {
+        if (input == 'WASD') return this.spawn_x_1
+        return this.spawn_x_2
     }
-    getSpawnX() {
-        return this.spawn_x
-    }
-    getSpawnY() {
-        return this.spawn_y
+    getSpawnY(input) {
+        if (input == 'WASD') return this.spawn_y_1
+        return this.spawn_y_2
     }
 
     // Door logic
@@ -222,81 +227,24 @@ class EnemyShieldComponent extends Component {
         this.transform.sx = this.shield.width
         this.transform.sy = -this.shield.height
 
-        this.found = false
-        let enemies = GameObject.getObjectsByName('EnemyGameObject')
-        // if the enemy is alive
-        for (let enemy of enemies) {
-            let enemyComponent = enemy.getComponent('EnemyComponent')
-            // find matching id
-            if (enemyComponent.id == this.id) {
-                this.found = true
-                let playerComponent = enemyComponent
-                if (playerComponent.player.direction == 1) {
-                    this.transform.x =
-                        playerComponent.transform.x -
-                        playerComponent.player.width / 6
-                    this.transform.y =
-                        playerComponent.transform.y +
-                        playerComponent.player.height / 1.2
-                } else {
-                    this.transform.x =
-                        playerComponent.transform.x +
-                        (2 * playerComponent.player.width) / 3
-                    this.transform.y =
-                        playerComponent.transform.y +
-                        playerComponent.player.height / 1.2
-                }
+        this.shield.isBlocking = false
+        if (!this.shield.stuck) {
+            let platformGameObject =
+                GameObject.getObjectByName('PlatformGameObject')
 
-                this.shield.lerpx = ShieldComponent.lerp(
-                    this.shield.lerpx,
-                    this.transform.x,
-                    500 / 1000
-                )
-                this.transform.x = this.shield.lerpx
-            }
-        }
-        if (!this.found) {
-            this.shield.isBlocking = false
-            if (!this.shield.stuck) {
-                let platformGameObject =
-                    GameObject.getObjectByName('PlatformGameObject')
+            let floorGameObjects =
+                GameObject.getObjectsByName('FloorGameObject')
 
-                let floorGameObjects =
-                    GameObject.getObjectsByName('FloorGameObject')
+            // If the shield is in the air then apply the effect of gravity
+            if (this.shield.y_v < 12) this.shield.y_v += this.gravity
+            this.transform.y += this.shield.y_v
 
-                // If the shield is in the air then apply the effect of gravity
-                if (this.shield.y_v < 12) this.shield.y_v += this.gravity
-                this.transform.y += this.shield.y_v
-
-                if (platformGameObject) {
-                    let platformComponent =
-                        platformGameObject.getComponent('PlatformComponent')
-                    // Check for collions with the platform
-                    for (
-                        let i = 0;
-                        i < platformComponent.platforms.length;
-                        i++
-                    ) {
-                        let plat = platformComponent.platforms[i]
-                        if (
-                            this.transform.y <= plat.y &&
-                            this.transform.y + this.shield.height >= plat.y &&
-                            this.transform.x >= plat.x &&
-                            this.transform.x + this.shield.width <=
-                                plat.x + plat.width
-                        ) {
-                            this.transform.y = plat.y
-                            this.shield.stuck = true
-                        }
-                    }
-                }
-
-                // Check for collisions with the floor
-                for (let floorGameObject of floorGameObjects) {
-                    let floorComponent =
-                        floorGameObject.getComponent('FloorComponent')
-                    let plat = floorComponent.floor
-
+            if (platformGameObject) {
+                let platformComponent =
+                    platformGameObject.getComponent('PlatformComponent')
+                // Check for collions with the platform
+                for (let i = 0; i < platformComponent.platforms.length; i++) {
+                    let plat = platformComponent.platforms[i]
                     if (
                         this.transform.y <= plat.y &&
                         this.transform.y + this.shield.height >= plat.y &&
@@ -307,16 +255,34 @@ class EnemyShieldComponent extends Component {
                         this.transform.y = plat.y
                         this.shield.stuck = true
                     }
-                    if (this.transform.y >= plat.y + 1000) {
-                        this.parent.destroy()
-                    }
                 }
             }
-            if (this.shield.stuck) {
-                this.shield.y_v = 0
+
+            // Check for collisions with the floor
+            for (let floorGameObject of floorGameObjects) {
+                let floorComponent =
+                    floorGameObject.getComponent('FloorComponent')
+                let plat = floorComponent.floor
+
+                if (
+                    this.transform.y <= plat.y &&
+                    this.transform.y + this.shield.height >= plat.y &&
+                    this.transform.x >= plat.x &&
+                    this.transform.x + this.shield.width <= plat.x + plat.width
+                ) {
+                    this.transform.y = plat.y
+                    this.shield.stuck = true
+                }
+                if (this.transform.y >= plat.y + 1000) {
+                    this.parent.destroy()
+                }
             }
-            let playerGameObject =
-                GameObject.getObjectByName('PlayerGameObject')
+        }
+        if (this.shield.stuck) {
+            this.shield.y_v = 0
+        }
+        let playerGameObjects = GameObject.getObjectsByName('PlayerGameObject')
+        for (let playerGameObject of playerGameObjects) {
             if (playerGameObject) {
                 let playerComponent =
                     playerGameObject.getComponent('PlayerComponent')
@@ -329,15 +295,30 @@ class EnemyShieldComponent extends Component {
 
                 if (
                     Math.abs(this.transform.x - playerComponent.transform.x) <=
-                    30
+                        30 &&
+                    Math.abs(this.transform.y - playerComponent.transform.y) <=
+                        30
                 ) {
-                    if (
-                        keysDown['e'] &&
-                        !checkpointComponent.getShieldEquipment()
-                    ) {
-                        GameObject.instantiate(new ShieldGameObject())
-                        checkpointComponent.setShieldEquipment(true)
-                        this.parent.destroy()
+                    // Player 1 picks up the shield
+                    if (playerComponent.input == 'WASD') {
+                        if (keysDown['e']) {
+                            GameObject.instantiate(
+                                new ShieldGameObject(playerComponent.input)
+                            )
+                            // checkpointComponent.setShieldEquipment(true)
+                            this.parent.destroy()
+                        }
+                    }
+
+                    // Player 2 picks up the shield
+                    else if (playerComponent.input == 'Arrows') {
+                        if (keysDown['/']) {
+                            GameObject.instantiate(
+                                new ShieldGameObject(playerComponent.input)
+                            )
+                            // checkpointComponent.setShieldEquipment(true)
+                            this.parent.destroy()
+                        }
                     }
                 }
             }
@@ -413,8 +394,8 @@ class PlayerComponent extends Component {
 
         // If not, we died and need to respawn
         else {
-            this.transform.x = checkpointComponent.getSpawnX()
-            this.transform.y = checkpointComponent.getSpawnY()
+            this.transform.x = checkpointComponent.getSpawnX(this.input)
+            this.transform.y = checkpointComponent.getSpawnY(this.input)
 
             if (checkpointComponent.getId() != 0) {
                 this.player.sitting = true
@@ -439,7 +420,7 @@ class PlayerComponent extends Component {
         let floorGameObjects = GameObject.getObjectsByName('FloorGameObject')
 
         if (!this.player.sitting) {
-            this.parent.layer = 0
+            this.parent.layer = this.input == 'WASD' ? 1 : -1
 
             // Check if the player is blocked
             if (this.player.blocked && this.player.canJump) {
@@ -701,6 +682,27 @@ class PlayerComponent extends Component {
 
             if ((in_range && !blocked) || fallen) {
                 // SceneManager.changeScene(2)
+                if (shieldGameObject) {
+                    let shieldComponent =
+                        shieldGameObject.getComponent('ShieldComponent')
+                    if (shieldComponent.input == this.input) {
+                        if (fallen) {
+                            shieldGameObject.destroy()
+                            GameObject.instantiate(
+                                new EnemyShieldGameObject(0, 0, -125)
+                            )
+                        } else {
+                            shieldGameObject.destroy()
+                            GameObject.instantiate(
+                                new EnemyShieldGameObject(
+                                    0,
+                                    shieldComponent.transform.x,
+                                    shieldComponent.transform.y
+                                )
+                            )
+                        }
+                    }
+                }
                 this.transform.x = 0
                 this.transform.y = 0
             }
@@ -754,19 +756,6 @@ class SwordComponent extends Component {
         this.freezeTime = 0
         this.maxFreezeTime = 1
         this.found = false
-
-        // this.transform.x =
-        //     playerComponent.transform.x + playerComponent.player.width / 3
-        // this.transform.y =
-        //     playerComponent.transform.y + playerComponent.player.height / 1.5
-        // this.sword.lerpx = SwordComponent.lerp(
-        //     this.sword.lerpx,
-        //     this.transform.x - this.sword.height / 3,
-        //     this.windUpTime / this.maxTime
-        // )
-        // this.sword.lerpy = this.transform.y - this.sword.height
-        // this.transform.sx = this.sword.lerpx
-        // this.transform.sy = this.sword.lerpy
     }
     update() {
         this.transform.sx = this.sword.lerpx
@@ -788,7 +777,8 @@ class SwordComponent extends Component {
                 this.sword.sitting = playerComponent.player.sitting
                 if (!this.sword.sitting) {
                     playerComponent.player.blocked = this.sword.blocked
-                    this.parent.layer = 1
+                    this.parent.layer = this.input == 'WASD' ? 1 : 0
+                    // this.parent.layer = 1
                     if (playerComponent.player.x_v >= 0) {
                         this.transform.x =
                             playerComponent.transform.x +
@@ -916,7 +906,21 @@ class SwordComponent extends Component {
                     }
 
                     this.freezeTime += Time.deltaTime
+                    // let shieldComponent
+                    // if (shieldGameObject) {
+                    //     shieldGameObject.getComponent('ShieldComponent')
+                    //         .input == this.input
+                    //         ? (shieldComponent =
+                    //               shieldGameObject.getComponent(
+                    //                   'ShieldComponent'
+                    //               ))
+                    //         : (shieldComponent = null)
+                    // }
 
+                    // if (shieldComponent)
+                    //     console.log(
+                    //         `this input: ${this.input}, shield input: ${shieldComponent.input}`
+                    //     )
                     if (
                         ((this.input == 'WASD' && keysDown['s']) ||
                             (this.input == 'Arrows' &&
@@ -977,6 +981,10 @@ class SwordGameObject extends GameObject {
 
 class ShieldComponent extends Component {
     name = 'ShieldComponent'
+    constructor(input) {
+        super()
+        this.input = input
+    }
     start() {
         this.shield = {
             canBlock: true,
@@ -992,134 +1000,159 @@ class ShieldComponent extends Component {
         this.maxTime = 2
         this.freezeTime = 1
         this.maxFreezeTime = 1
+        this.found = false
         this.parent.addComponent(new Rectangle('black'))
         this.parent.addComponent(new Rectangle('none', 'grey'))
-    }
-    update() {
+
         this.transform.sx = this.shield.width
         this.transform.sy = -this.shield.height
+    }
+    update() {
+        let playerGameObjects = GameObject.getObjectsByName('PlayerGameObject')
+        // let playerComponent = playerGameObject.getComponent('PlayerComponent')
+        let swordGameObjects = GameObject.getObjectsByName('SwordGameObject')
 
-        let playerGameObject = GameObject.getObjectByName('PlayerGameObject')
-        let playerComponent = playerGameObject.getComponent('PlayerComponent')
-        let swordGameObject = GameObject.getObjectByName('SwordGameObject')
+        this.found = false
+        for (let playerGameObject of playerGameObjects) {
+            let playerComponent =
+                playerGameObject.getComponent('PlayerComponent')
+            // console.log(`shield input: ${this.input}, player`)
+            if (this.input == playerComponent.input) {
+                this.found = true
 
-        // Make sure the player is not sitting
-        this.shield.sitting = playerComponent.player.sitting
-        if (!this.shield.sitting) {
-            this.parent.layer = 1
-            if (playerComponent.player.x_v < 0) {
-                this.transform.x =
-                    playerComponent.transform.x -
-                    playerComponent.player.width / 6
-                this.transform.y =
-                    playerComponent.transform.y +
-                    playerComponent.player.height / 1.2
-            } else {
-                this.transform.x =
-                    playerComponent.transform.x +
-                    (2 * playerComponent.player.width) / 3
-                this.transform.y =
-                    playerComponent.transform.y +
-                    playerComponent.player.height / 1.2
-            }
-
-            // if shield is blocking
-            if (this.shield.isBlocking) {
-                this.blockTime += 90 / 1000
-                // if the player is facing to the right
-                if (playerComponent.player.x_v >= 0) {
-                    let partialTime
-                    this.blockTime * 3 <= this.maxTime
-                        ? (partialTime = this.blockTime * 3)
-                        : (partialTime = this.blockTime)
-                    this.shield.lerpx = ShieldComponent.lerp(
-                        this.shield.lerpx,
-                        this.transform.x + this.shield.width,
-                        partialTime / this.maxTime
-                    )
-                }
-                // if the player is facing to the left
-                else {
-                    let partialTime
-                    this.blockTime * 3 <= this.maxTime
-                        ? (partialTime = this.blockTime * 3)
-                        : (partialTime = this.blockTime)
-                    this.shield.lerpx = ShieldComponent.lerp(
-                        this.shield.lerpx,
-                        this.transform.x - this.shield.width,
-                        partialTime / this.maxTime
-                    )
-                }
-
-                this.shield.lerpy = ShieldComponent.lerp(
-                    this.shield.lerpy,
-                    this.transform.y - this.shield.height / 2,
-                    this.blockTime / this.maxTime
-                )
-                this.transform.x = this.shield.lerpx
-                this.transform.y = this.shield.lerpy
-            }
-            // if the shield is not blocking
-            else {
-                this.shield.lerpx = ShieldComponent.lerp(
-                    this.shield.lerpx,
-                    this.transform.x,
-                    500 / 1000
-                )
-                this.transform.x = this.shield.lerpx
-            }
-
-            // Make sure shield can block, is not currently blocking, and the sword is not swinging
-            // There is a small timer so that the player cannot spam block
-            this.freezeTime += Time.deltaTime
-            if (
-                this.shield.canBlock &&
-                !this.shield.isBlocking &&
-                this.freezeTime >= this.maxFreezeTime &&
-                (keysDown['f'] || keysDown['F'])
-            ) {
-                if (swordGameObject) {
-                    let swordComponent =
-                        swordGameObject.getComponent('SwordComponent')
-                    if (!swordComponent.sword.isSwinging) {
-                        this.shield.lerpx = this.transform.x
-                        this.shield.lerpy = this.transform.y
-                        this.blockTime = 0
-                        this.shield.isBlocking = true
-                        this.shield.canBlock = false
+                // Make sure the player is not sitting
+                this.shield.sitting = playerComponent.player.sitting
+                if (!this.shield.sitting) {
+                    this.parent.layer = this.input == 'WASD' ? 1 : 0
+                    if (playerComponent.player.x_v < 0) {
+                        this.transform.x =
+                            playerComponent.transform.x -
+                            playerComponent.player.width / 6
+                        this.transform.y =
+                            playerComponent.transform.y +
+                            playerComponent.player.height / 1.2
+                    } else {
+                        this.transform.x =
+                            playerComponent.transform.x +
+                            (2 * playerComponent.player.width) / 3
+                        this.transform.y =
+                            playerComponent.transform.y +
+                            playerComponent.player.height / 1.2
                     }
-                } else {
-                    this.shield.lerpx = this.transform.x
-                    this.shield.lerpy = this.transform.y
-                    this.blockTime = 0
-                    this.shield.isBlocking = true
-                    this.shield.canBlock = false
+
+                    // if shield is blocking
+                    if (this.shield.isBlocking) {
+                        this.blockTime += 90 / 1000
+                        // if the player is facing to the right
+                        if (playerComponent.player.x_v >= 0) {
+                            let partialTime
+                            this.blockTime * 3 <= this.maxTime
+                                ? (partialTime = this.blockTime * 3)
+                                : (partialTime = this.blockTime)
+                            this.shield.lerpx = ShieldComponent.lerp(
+                                this.shield.lerpx,
+                                this.transform.x + this.shield.width,
+                                partialTime / this.maxTime
+                            )
+                        }
+                        // if the player is facing to the left
+                        else {
+                            let partialTime
+                            this.blockTime * 3 <= this.maxTime
+                                ? (partialTime = this.blockTime * 3)
+                                : (partialTime = this.blockTime)
+                            this.shield.lerpx = ShieldComponent.lerp(
+                                this.shield.lerpx,
+                                this.transform.x - this.shield.width,
+                                partialTime / this.maxTime
+                            )
+                        }
+
+                        this.shield.lerpy = ShieldComponent.lerp(
+                            this.shield.lerpy,
+                            this.transform.y - this.shield.height / 2,
+                            this.blockTime / this.maxTime
+                        )
+                        this.transform.x = this.shield.lerpx
+                        this.transform.y = this.shield.lerpy
+                    }
+                    // if the shield is not blocking
+                    else {
+                        this.shield.lerpx = ShieldComponent.lerp(
+                            this.shield.lerpx,
+                            this.transform.x,
+                            500 / 1000
+                        )
+                        this.transform.x = this.shield.lerpx
+                    }
+
+                    // Make sure shield can block, is not currently blocking, and the sword is not swinging
+                    // There is a small timer so that the player cannot spam block
+                    this.freezeTime += Time.deltaTime
+                    if (
+                        this.shield.canBlock &&
+                        !this.shield.isBlocking &&
+                        this.freezeTime >= this.maxFreezeTime &&
+                        ((this.input == 'WASD' && keysDown['f']) ||
+                            (this.input == 'Arrows' && keysDown[' ']))
+                    ) {
+                        let swing = false
+                        for (let swordGameObject of swordGameObjects) {
+                            let swordComponent =
+                                swordGameObject.getComponent('SwordComponent')
+                            if (
+                                !swordComponent.sword.isSwinging &&
+                                swordComponent.input == this.input
+                            ) {
+                                this.shield.lerpx = this.transform.x
+                                this.shield.lerpy = this.transform.y
+                                this.blockTime = 0
+                                this.shield.isBlocking = true
+                                this.shield.canBlock = false
+                                swing = true
+                            }
+                        }
+                        if (!swing) {
+                            this.shield.lerpx = this.transform.x
+                            this.shield.lerpy = this.transform.y
+                            this.blockTime = 0
+                            this.shield.isBlocking = true
+                            this.shield.canBlock = false
+                        }
+                    }
+                    if (
+                        this.shield.isBlocking &&
+                        this.blockTime >= this.maxTime
+                    ) {
+                        this.freezeTime = 0
+                        this.blockTime = 0
+                        this.shield.isBlocking = false
+                        this.shield.canBlock = true
+                    }
+                }
+                // If this player is sitting then move the shield to the player's back
+                else {
+                    this.parent.layer = -2
+                    this.transform.x =
+                        playerComponent.transform.x +
+                        (2 * playerComponent.player.width) / 3
+                    this.transform.y =
+                        playerComponent.transform.y +
+                        playerComponent.player.height / 1.2
                 }
             }
-            if (this.shield.isBlocking && this.blockTime >= this.maxTime) {
-                this.freezeTime = 0
-                this.blockTime = 0
-                this.shield.isBlocking = false
-                this.shield.canBlock = true
-            }
-        }
-        // If this player is sitting then move the shield to the player's back
-        else {
-            this.parent.layer = -2
-            this.transform.x =
-                playerComponent.transform.x +
-                (2 * playerComponent.player.width) / 3
-            this.transform.y =
-                playerComponent.transform.y +
-                playerComponent.player.height / 1.2
         }
     }
 }
 
 class ShieldGameObject extends GameObject {
     name = 'ShieldGameObject'
+    constructor(input) {
+        super()
+        this.input = input
+    }
     start() {
-        this.addComponent(new ShieldComponent()).layer = 1
+        this.addComponent(new ShieldComponent(this.input)).layer = 1
     }
 }
 
