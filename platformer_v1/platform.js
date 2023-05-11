@@ -1,9 +1,12 @@
+// Basic logic for platforms and player inspired from https://www.educative.io/answers/how-to-make-a-simple-platformer-using-javascript
+//
+// Educative (2023) "How to make a simple platformer using JavaScript" [Source code] https://www.educative.io/answers/how-to-make-a-simple-platformer-using-javascript
+
 import '/engine/engine.js'
 
-//-----------------------------------------------------
-//Start
-
-// TODO - make a death plane where the player dies when entering
+// =================================================== //
+//                        Start                        //
+// =================================================== //
 
 class CheckpointComponent extends Component {
     name = 'CheckpointComponent'
@@ -90,10 +93,10 @@ class MainCameraComponent extends Component {
             maxDifference = 50
             difference = playerGameObject.transform.y - this.transform.y
             if (difference > maxDifference) {
-                //The player is to the right
+                //The player is below
                 this.transform.y += 0.1 * (difference - maxDifference)
             } else if (difference < -maxDifference) {
-                //The player is to the left
+                //The player is above
                 this.transform.y += 0.1 * (difference + maxDifference)
             }
         }
@@ -354,8 +357,9 @@ class StartScene extends Scene {
     }
 }
 
-//-----------------------------------------------------
-//Main
+// =================================================== //
+//                        Main                         //
+// =================================================== //
 
 class MainController extends Component {
     name = 'MainController'
@@ -2543,8 +2547,9 @@ class MainScene extends Scene {
     }
 }
 
-//-----------------------------------------------------
-//End
+// =================================================== //
+//                        Death                        //
+// =================================================== //
 
 class EndController extends Component {
     start() {

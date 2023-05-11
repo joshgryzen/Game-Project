@@ -1,21 +1,21 @@
-import './SceneManager.js'
-import './Component.js'
-import './Scene.js'
+// Transcribed and modified from https://github.com/CS2510/Spring2023.Day15Starter/blob/main/engine/engine.js
+//
+// Ricks, B (2023) CS2510 Game Engine (Spring2023.Day15Starter) [Source code]. https://github.com/CS2510/Spring2023.Day15Starter
+
 import './GameObject.js'
-import './Transform.js'
-import './Circle.js'
+import './Component.js'
+
 import './Camera.js'
-import './Rectangle.js'
-import './GUIRectangle.js'
-import './GUIText.js'
 import './GUITextCentered.js'
-import './ScreenRectangle.js'
-import './Line.js'
-import './Text.js'
-import './Vector2.js'
-import './Time.js'
 import './Input.js'
-import './CameraMover.js'
+import './Line.js'
+import './Rectangle.js'
+import './Scene.js'
+import './SceneManager.js'
+import './Text.js'
+import './Time.js'
+import './Transform.js'
+import './Vector2.js'
 
 class EngineGlobals {
     static requestedAspectRatio = 16 / 9
@@ -24,104 +24,72 @@ class EngineGlobals {
 
 window.EngineGlobals = EngineGlobals
 
-//True if the gamee is paused, false otherwise
 let pause = false
 
-//Add an aspect ratio
-//Add logical coordinates
+// TODO later add a cool favicon thingy
+// Lines 34 - 38 in bricks engine code
 
-//Handle favicon
-const link = document.createElement('link')
-link.href =
-    "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2016%2016'%3E%3Ctext%20x='0'%20y='14'%3E🎮%3C/text%3E%3C/svg%3E"
-link.rel = 'icon'
-document.getElementsByTagName('head')[0].appendChild(link) // for IE6
+// =================================================== //
+//                  Input Handling                     //
+// =================================================== //
 
-//-----------------------------------------------------------
-//Input Event handling
-//-----------------------------------------------------------
-
-//Get references to the canvas element and
-//the 2d context
 let canvas = document.querySelector('#canv')
 let ctx = canvas.getContext('2d')
 
-//Store the state of the user input
-//This will be in its own file eventually
 let keysDown = []
 let mouseX
 let mouseY
 
-//Add event handlers so we capture user input
-//Note the strings has to be all lowercase, e.g. keydown not keyDown or KeyDown
+// Event handlers for keydown and keyup
 document.addEventListener('keydown', keyDown)
 document.addEventListener('keyup', keyUp)
 
-//Key up event handlers
-function keyUp(e) {
-    keysDown[e.key] = false
+function keyUp(event) {
+    keysDown[event.key] = false
 
-    //Pause functionality
-    if (e.key == 'p') {
-        pause = !pause
+    // pausing the engine
+    if (event.key == 'p' || event.key == 'P') {
+        pause != pause
     }
 }
 
-//Key down event handlers.
-//Remember that key down can be triggered
-//Multiple times without a keyup event
-//If the user hold the key down ("repated keys")
-function keyDown(e) {
-    keysDown[e.key] = true
+function keyDown(event) {
+    keysDown[event.key] = true
 
-    //To prevent scrolling (if needed)
-    //This has to be in keyDown, not keyup
-    if (e.key == ' ') {
-        e.preventDefault()
+    // Prevent default actions
+    // Space scrolls the window
+    // Shift does something funky ---> TODO add later
+    if (event.key == ' ') {
+        event.preventDefault()
     }
 }
 
-//-----------------------------------------------------------
-//Game Loop
-//-----------------------------------------------------------
+// =================================================== //
+//                      Game Loop                      //
+// =================================================== //
 
-/**
- * The engine's game loop.
- * This should never be called by game code.
- * Internally, this is called every Time.deltaTime seconds.
- *
- * The game loop updates the game and then draws the game
- */
 function gameLoop() {
     update()
     draw()
 }
 
-/**
- * The update part of the game loop.
- *
- * This function should never by called by game code.
- */
-function update() {
-    //Match the size of the canvas to the browser's size
-    //This allows us to respond to browser size changes
-    canvas.width = window.innerWidth
-    canvas.height = window.innerHeight
+// =================================================== //
+//                        Update                       //
+// =================================================== //
 
-    //Handle the case when there is a system level pause.
+function update() {
+    // Don't update anything if the game is paused
     if (pause) return
 
     Time.update()
 
-    //Get a reference to the active scene.
+    // Get active scene
     let scene = SceneManager.getActiveScene()
     if (SceneManager.changedSceneFlag && scene.start) {
         let camera = scene.gameObjects[0]
         scene.gameObjects = []
         scene.gameObjects.push(camera)
 
-        //Loop through the objects from the previous scene
-        //so can preserve some
         let previousScene = SceneManager.getPreviousScene()
         if (previousScene) {
             for (let gameObject of previousScene.gameObjects) {
@@ -135,19 +103,19 @@ function update() {
         SceneManager.changedSceneFlag = false
     }
 
-    //Start any game objects that can be started
-    //but have not.
+    // Start game objects that have a start function
     for (let gameObject of scene.gameObjects) {
+        // make sure they have not already started
         if (gameObject.start && !gameObject.started) {
             gameObject.start(ctx)
             gameObject.started = true
         }
     }
 
-    //Start any components that can be started
-    //but have not.
+    // Start components that have a start function
     for (let gameObject of scene.gameObjects) {
         for (let component of gameObject.components) {
+            // make sure they have not already started
             if (component.start && !component.started) {
                 component.start(ctx)
                 component.started = true
@@ -155,7 +123,7 @@ function update() {
         }
     }
 
-    //Handle destroy here
+    // Destroy things
     let keptGameObjects = []
     for (let gameObject of scene.gameObjects) {
         if (!gameObject.markedForDestroy) {
@@ -164,7 +132,7 @@ function update() {
     }
     scene.gameObjects = keptGameObjects
 
-    //Call update on all components with an update function
+    // Updated components that have an updated function
     for (let gameObject of scene.gameObjects) {
         for (let component of gameObject.components) {
             if (component.update) {
@@ -172,18 +140,21 @@ function update() {
             }
         }
     }
+
     Input.finishFrame()
 }
 
-let letterboxColor = 'gray'
+let letterboxColor = 'grey'
 
-/**
- * The draw part of the game loop.
- *
- * This should never be called directly from game code.
- */
+// =================================================== //
+//                        Draw                         //
+// =================================================== //
+
 function draw() {
-    //Adjust for the camera
+    // Getting the correct canvas dimensions from browser
+    canvas.width = window.innerWidth
+    canvas.height = window.innerHeight
+
     ctx.fillStyle = Camera.main.fillStyle
     ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height)
 
@@ -205,16 +176,15 @@ function draw() {
     let scene = SceneManager.getActiveScene()
 
     ctx.save()
-    // let logicalScaling = browserWidth / EngineGlobals.logicalWidth * Camera.main.transform.sx;
+
     let logicalScaling = Camera.getLogicalScaleZoomable(ctx)
     ctx.translate(ctx.canvas.width / 2, ctx.canvas.height / 2)
     ctx.scale(logicalScaling, logicalScaling)
 
-    //ctx.scale(Camera.main.transform.sx, Camera.main.transform.sy);
     ctx.translate(-Camera.main.transform.x, -Camera.main.transform.y)
 
-    //Calculate the min and max layer
-    //Map/Reduce
+    // Draw components
+    // Layer shenanigans first
     let min = scene.gameObjects
         .filter((go) => go.components.some((c) => c.draw))
         .map((go) => go.layer)
@@ -225,7 +195,6 @@ function draw() {
         .map((go) => go.layer)
         .reduce((previous, current) => Math.max(previous, current), 0)
 
-    //Loop through the components and draw them.
     for (let i = min; i <= max; i++) {
         let gameObjects = scene.gameObjects.filter((go) => go.layer == i)
 
@@ -240,7 +209,7 @@ function draw() {
 
     ctx.restore()
 
-    //Now draw the letterboxes
+    // Letterboxing
     let zeroX = 0
     let zeroY = 0
     if (EngineGlobals.requestedAspectRatio > browserAspectRatio) {
@@ -259,7 +228,8 @@ function draw() {
         ctx.fillRect(canvas.width - amount, 0, amount, canvas.height)
     }
 
-    //Now draw any UI. Note we do this after we draw the letterboxes.
+    // Draw UI
+    // Layer shenanigans first
     logicalScaling = Camera.getLogicalScale(ctx)
     min = scene.gameObjects
         .filter((go) => go.components.some((c) => c.drawGUI))
@@ -271,7 +241,6 @@ function draw() {
         .map((go) => go.layer)
         .reduce((previous, current) => Math.max(previous, current), 0)
 
-    //Loop through the components and draw them.
     ctx.save()
     ctx.translate(zeroX, zeroY)
     ctx.scale(logicalScaling, logicalScaling)
@@ -286,10 +255,12 @@ function draw() {
             }
         }
     }
-    ctx.restore()
 
-    //Now draw directly on the screen
+    ctx.restore()
     ctx.save()
+
+    // Draw anything directly onto the screen last
+    // Layer shenanigans as per usual
     min = scene.gameObjects
         .filter((go) => go.components.some((c) => c.drawScreen))
         .map((go) => go.layer)
@@ -300,7 +271,6 @@ function draw() {
         .map((go) => go.layer)
         .reduce((previous, current) => Math.max(previous, current), 0)
 
-    //Loop through the components and draw them.
     ctx.save()
     for (let i = min; i <= max; i++) {
         let gameObjects = scene.gameObjects.filter((go) => go.layer == i)
@@ -313,9 +283,10 @@ function draw() {
             }
         }
     }
+
     ctx.restore()
 
-    //Draw debugging information
+    // Draw debugging stuff
     let debug = false
     if (debug) {
         let y = 50
@@ -335,22 +306,13 @@ function draw() {
     }
 }
 
-/**
- * Set the browser tab title, parse any settings, and start the game loop.
- * @param {string} title The title of the browser window
- * @param {Object} settings The settings for the engine to parse. Defaults to an empty object.
- *
- * The engine accepts the following settings. Any other keys on the settings object are ignored.
- * - aspectRatio. The aspect ratio requested by the game. Defaults to 16/9
- * - letterboxColor. The color of the letterboxing bars. To remove letterboxing, use "transparent". Defaults to black.
- * - logicalWidth. The logical width of the game. The engine will scale the drawing area to support this logical width. Defaults to 100.
- */
+// =================================================== //
+//                        Start                        //
+// =================================================== //
+
 function start(title, settings = {}) {
-    //Boot the input event handlers
     Input.start()
 
-    //Match the size of the canvas to the browser's size
-    //This allows us to respond to browser size changes
     canvas.width = window.innerWidth
     canvas.height = window.innerHeight
 
@@ -367,20 +329,10 @@ function start(title, settings = {}) {
             : 100
     }
 
-    //Run the game loop 25 times a second
     setInterval(gameLoop, 1000 * Time.deltaTime)
 }
 
-//Add certain functions to the global namespace
-//This allows us to call these functions without
-//a prefix, which better matches Unity
-
-/** Start the game in 'play mode1 */
 window.start = start
-
-/** Expose the update calls for the testing routines */
 window.engineUpdate = update
 window.engineDraw = draw
-
-/** The state of the keyboard.. */
 window.keysDown = keysDown
