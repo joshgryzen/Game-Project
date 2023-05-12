@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <link href="./engine.css" rel="stylesheet" />
+    </head>
+
+    <body>
+        <canvas id="canv"></canvas>
+        <script type="module">
+            import './engine.js'
+            import './platfight.js'
+            SceneManager.startScenes(allScenes)
+            start('Knight Fight', {
+                aspectRatio: 16 / 9,
+                logicalWidth: 600,
+                letterboxColor: 'black',
+            })
+        </script>
+    </body>
+</html>
