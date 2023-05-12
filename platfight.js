@@ -4,7 +4,7 @@
 
 // Lerp tutorial for sword movement from https://gamedevbeginner.com/the-right-way-to-lerp-in-unity-with-examples/
 
-import '/engine/engine.js'
+import './engine.js'
 
 // =================================================== //
 //                        Start                        //
